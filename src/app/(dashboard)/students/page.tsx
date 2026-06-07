@@ -1,0 +1,194 @@
+'use client'
+import { Table, Tag, Button, Input, Tabs, Card, Progress, Avatar, Row, Col } from 'antd'
+import { SearchOutlined } from '@ant-design/icons'
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import useSWR from 'swr'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json())
+
+const RISK_COLOR_MAP: Record<string, string> = { high: '#ff4d4f', warning: '#faad14', normal: '#52c41a' }
+const RISK_LABEL_MAP: Record<string, string> = { high: '高风险', warning: '关注', normal: '正常' }
+
+const STAT_CARDS = [
+  { key: 'total', label: '总学生数', color: '#1677ff', bg: '#e6f4ff', border: '#1677ff' },
+  { key: 'high', label: '高风险', color: '#ff4d4f', bg: '#fff1f0', border: '#ff4d4f' },
+  { key: 'warning', label: '关注', color: '#faad14', bg: '#fffbe6', border: '#faad14' },
+  { key: 'normal', label: '正常', color: '#52c41a', bg: '#f6ffed', border: '#52c41a' },
+]
+
+export default function StudentsPage() {
+  const router = useRouter()
+  const [search, setSearch] = useState('')
+  const [activeTab, setActiveTab] = useState('all')
+  const [page, setPage] = useState(1)
+
+  const query = new URLSearchParams({ page: String(page), limit: '20' })
+  if (activeTab !== 'all') query.set('riskLevel', activeTab)
+  const { data, isLoading } = useSWR(`/api/students?${query}`, fetcher)
+  const students = data?.students ?? []
+
+  const filtered = search
+    ? students.filter((s: { name: string; studentNo: string }) =>
+        s.name.includes(search) || (s.studentNo ?? '').includes(search))
+    : students
+
+  const counts = {
+    total: data?.total ?? 0,
+    high: students.filter((s: { riskLevel: string }) => s.riskLevel === 'high').length,
+    warning: students.filter((s: { riskLevel: string }) => s.riskLevel === 'warning').length,
+    normal: students.filter((s: { riskLevel: string }) => s.riskLevel === 'normal').length,
+  }
+
+  const pieData = [
+    { name: '高风险', value: counts.high, fill: '#ff4d4f' },
+    { name: '关注', value: counts.warning, fill: '#faad14' },
+    { name: '正常', value: counts.normal, fill: '#52c41a' },
+  ]
+
+  const columns = [
+    {
+      title: '学生',
+      key: 'student',
+      width: 150,
+      render: (_: unknown, r: { id: string; name: string }) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Avatar size={32} style={{ background: '#1677ff', fontSize: 14, flexShrink: 0 }}>
+            {r.name?.[0] ?? '?'}
+          </Avatar>
+          <Button type="link" style={{ padding: 0, fontWeight: 500, fontSize: 13 }}
+            onClick={() => router.push(`/students/${r.id}`)}>
+            {r.name}
+          </Button>
+        </div>
+      ),
+    },
+    { title: '学号', dataIndex: 'studentNo', key: 'studentNo', width: 110 },
+    { title: '班级', dataIndex: ['class', 'name'], key: 'class', width: 80 },
+    { title: '年级', dataIndex: 'grade', key: 'grade', width: 70 },
+    {
+      title: '最近得分',
+      dataIndex: 'lastScore',
+      key: 'lastScore',
+      width: 90,
+      render: (v: number | null) =>
+        v !== null ? (
+          <span style={{ fontWeight: 600, color: v >= 80 ? '#52c41a' : v >= 60 ? '#faad14' : '#ff4d4f' }}>{v}</span>
+        ) : <span style={{ color: '#ccc' }}>—</span>,
+    },
+    {
+      title: '综合掌握度',
+      dataIndex: 'avgMastery',
+      key: 'avgMastery',
+      width: 140,
+      render: (v: number | null) =>
+        v !== null ? (
+          <Progress percent={Math.round(v)} size="small"
+            strokeColor={v < 60 ? '#ff4d4f' : v < 75 ? '#faad14' : '#52c41a'}
+            showInfo={false} />
+        ) : <span style={{ color: '#ccc' }}>—</span>,
+    },
+    {
+      title: '风险等级',
+      dataIndex: 'riskLevel',
+      key: 'riskLevel',
+      width: 90,
+      render: (v: string) => (
+        <Tag color={RISK_COLOR_MAP[v]} style={{ borderRadius: 10, fontSize: 11, padding: '0 8px' }}>
+          {RISK_LABEL_MAP[v] ?? v}
+        </Tag>
+      ),
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 90,
+      render: (_: unknown, r: { id: string }) => (
+        <Button size="small" type="link" onClick={() => router.push(`/students/${r.id}`)}>
+          查看详情
+        </Button>
+      ),
+    },
+  ]
+
+  const tabItems = [
+    { key: 'all', label: `全部（${counts.total}）` },
+    { key: 'high', label: `高风险（${counts.high}）` },
+    { key: 'warning', label: `关注（${counts.warning}）` },
+    { key: 'normal', label: `正常（${counts.normal}）` },
+  ]
+
+  return (
+    <div>
+      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>学生管理</div>
+
+      {/* Stat Cards + Donut */}
+      <Row gutter={10} style={{ marginBottom: 16 }} align="middle">
+        {STAT_CARDS.map((sc) => (
+          <Col span={4} key={sc.key}>
+            <Card
+              bodyStyle={{ padding: '14px 16px' }}
+              style={{ borderRadius: 10, borderLeft: `4px solid ${sc.border}`, background: sc.bg, cursor: 'pointer' }}
+              onClick={() => setActiveTab(sc.key === 'total' ? 'all' : sc.key)}
+            >
+              <div style={{ fontSize: 26, fontWeight: 700, color: sc.color }}>
+                {counts[sc.key as keyof typeof counts]}<span style={{ fontSize: 13 }}>人</span>
+              </div>
+              <div style={{ fontSize: 12, color: '#666', marginTop: 2 }}>{sc.label}</div>
+            </Card>
+          </Col>
+        ))}
+        <Col span={8}>
+          <Card bodyStyle={{ padding: '8px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <ResponsiveContainer width={220} height={100}>
+              <PieChart>
+                <Pie data={pieData} cx={60} cy={45} innerRadius={28} outerRadius={44} dataKey="value" paddingAngle={2}>
+                  {pieData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                </Pie>
+                <Tooltip />
+                <Legend layout="vertical" align="right" verticalAlign="middle" iconSize={10} iconType="circle" />
+              </PieChart>
+            </ResponsiveContainer>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Tab + Search */}
+      <Card bodyStyle={{ padding: '0 16px' }} style={{ marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Tabs
+            activeKey={activeTab}
+            onChange={(k) => { setActiveTab(k); setPage(1) }}
+            items={tabItems}
+            style={{ marginBottom: 0 }}
+            size="small"
+          />
+          <Input
+            prefix={<SearchOutlined style={{ color: '#bbb' }} />}
+            placeholder="搜索姓名或学号"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ width: 200, borderRadius: 16 }}
+            size="small"
+          />
+        </div>
+      </Card>
+
+      {/* Table */}
+      <Card bodyStyle={{ padding: 0 }}>
+        <Table
+          dataSource={filtered}
+          columns={columns}
+          rowKey="id"
+          loading={isLoading}
+          size="middle"
+          pagination={{
+            total: data?.total, pageSize: 20, current: page,
+            onChange: setPage, showSizeChanger: false, size: 'small',
+          }}
+        />
+      </Card>
+    </div>
+  )
+}

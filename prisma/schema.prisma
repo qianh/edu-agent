@@ -1,0 +1,196 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Teacher {
+  id          String       @id @default(cuid())
+  name        String
+  phone       String?
+  email       String       @unique
+  password    String
+  school      String?
+  subject     String
+  role        String       @default("teacher")
+  createdAt   DateTime     @default(now())
+  classes     Class[]
+  assignments Assignment[]
+}
+
+model Class {
+  id          String       @id @default(cuid())
+  name        String
+  grade       String
+  subject     String
+  teacherId   String
+  teacher     Teacher      @relation(fields: [teacherId], references: [id])
+  students    Student[]
+  assignments Assignment[]
+  createdAt   DateTime     @default(now())
+}
+
+model Student {
+  id          String            @id @default(cuid())
+  name        String
+  studentNo   String            @unique
+  classId     String
+  class       Class             @relation(fields: [classId], references: [id])
+  grade       String
+  gender      String?
+  tags        String[]
+  submissions Submission[]
+  masteries   StudentMastery[]
+  reports     DiagnosisReport[]
+  createdAt   DateTime          @default(now())
+}
+
+model KnowledgePoint {
+  id          String           @id @default(cuid())
+  name        String
+  subject     String
+  grade       String
+  chapter     String?
+  description String?
+  difficulty  String           @default("medium")
+  parentId    String?
+  parent      KnowledgePoint?  @relation("KPTree", fields: [parentId], references: [id])
+  children    KnowledgePoint[] @relation("KPTree")
+  status      String           @default("active")
+  masteries   StudentMastery[]
+  results     GradingResult[]
+  questions   Question[]
+  createdAt   DateTime         @default(now())
+
+  @@index([subject, grade])
+}
+
+model Assignment {
+  id             String       @id @default(cuid())
+  title          String
+  subject        String
+  classId        String
+  class          Class        @relation(fields: [classId], references: [id])
+  teacherId      String
+  teacher        Teacher      @relation(fields: [teacherId], references: [id])
+  gradingMode    String
+  knowledgeScope String[]
+  submissions    Submission[]
+  createdAt      DateTime     @default(now())
+}
+
+model Submission {
+  id                  String          @id @default(cuid())
+  assignmentId        String
+  assignment          Assignment      @relation(fields: [assignmentId], references: [id])
+  studentId           String
+  student             Student         @relation(fields: [studentId], references: [id])
+  fileUrl             String
+  gradingMode         String
+  status              String          @default("pending")
+  totalScoreDetected  Float?
+  totalScoreConfirmed Float?
+  needReview          Boolean         @default(false)
+  teacherMarks        TeacherMark[]
+  gradingResults      GradingResult[]
+  aiJobs              AIJob[]
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@unique([assignmentId, studentId])
+}
+
+model TeacherMark {
+  id                 String     @id @default(cuid())
+  submissionId       String
+  submission         Submission @relation(fields: [submissionId], references: [id])
+  pageNo             Int        @default(1)
+  questionNo         String
+  markType           String
+  markText           String?
+  bbox               Json
+  color              String?
+  confidence         Float
+  imageCropUrl       String?
+  confirmedByTeacher Boolean    @default(false)
+  createdAt          DateTime   @default(now())
+}
+
+model GradingResult {
+  id                   String          @id @default(cuid())
+  submissionId         String
+  submission           Submission      @relation(fields: [submissionId], references: [id])
+  questionNo           String
+  studentAnswer        String?
+  standardAnswer       String?
+  aiScore              Float?
+  teacherScoreDetected Float?
+  teacherScoreConfirmed Float?
+  finalScore           Float?
+  finalSource          String?
+  isCorrect            Boolean?
+  knowledgePointId     String?
+  knowledgePoint       KnowledgePoint? @relation(fields: [knowledgePointId], references: [id])
+  errorType            String?
+  feedback             String?
+  confidence           Float?
+  conflictFlag         Boolean         @default(false)
+  conflictReason       String?
+  createdAt            DateTime        @default(now())
+}
+
+model StudentMastery {
+  id               String         @id @default(cuid())
+  studentId        String
+  student          Student        @relation(fields: [studentId], references: [id])
+  knowledgePointId String
+  knowledgePoint   KnowledgePoint @relation(fields: [knowledgePointId], references: [id])
+  masteryScore     Float          @default(0)
+  evidenceCount    Int            @default(0)
+  lastUpdated      DateTime       @updatedAt
+
+  @@unique([studentId, knowledgePointId])
+}
+
+model DiagnosisReport {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id])
+  content     Json
+  confirmedBy String?
+  createdAt   DateTime @default(now())
+}
+
+model Question {
+  id               String          @id @default(cuid())
+  content          String
+  type             String
+  answer           String?
+  explanation      String?
+  scoringCriteria  String?
+  subject          String
+  grade            String
+  difficulty       Int             @default(3)
+  knowledgePointId String?
+  knowledgePoint   KnowledgePoint? @relation(fields: [knowledgePointId], references: [id])
+  source           String          @default("ai_generated")
+  status           String          @default("draft")
+  useCount         Int             @default(0)
+  createdAt        DateTime        @default(now())
+}
+
+model AIJob {
+  id           String      @id @default(cuid())
+  type         String
+  status       String      @default("pending")
+  submissionId String?
+  submission   Submission? @relation(fields: [submissionId], references: [id])
+  result       Json?
+  error        String?
+  attempts     Int         @default(0)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
