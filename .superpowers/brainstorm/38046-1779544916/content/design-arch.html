@@ -1,0 +1,130 @@
+<h2>设计方案 §1：系统总体架构</h2>
+<p class="subtitle">Next.js 全栈 + BullMQ 异步队列 + GLM-5V / DeepSeek 双模型</p>
+
+<div class="mockup">
+  <div class="mockup-header">架构分层图</div>
+  <div class="mockup-body" style="font-size:13px;line-height:1.9">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+
+      <div style="background:#e8f4fd;border:1px solid #3b82f6;border-radius:8px;padding:12px">
+        <div style="font-weight:700;color:#1d4ed8;margin-bottom:8px">🖥️ 前端层</div>
+        <div style="font-size:12px;line-height:1.8">
+          Next.js 15 App Router<br>
+          TypeScript<br>
+          Ant Design 5<br>
+          SWR（数据请求）<br>
+          Server-Sent Events（进度推送）<br>
+          Recharts（图表）<br>
+          React Flow（知识图谱）
+        </div>
+      </div>
+
+      <div style="background:#f0fdf4;border:1px solid #22c55e;border-radius:8px;padding:12px">
+        <div style="font-weight:700;color:#15803d;margin-bottom:8px">⚙️ API 层</div>
+        <div style="font-size:12px;line-height:1.8">
+          Next.js API Routes<br>
+          /api/students/*<br>
+          /api/assignments/*<br>
+          /api/questions/*<br>
+          /api/knowledge/*<br>
+          /api/dashboard/*<br>
+          /api/jobs/* (任务状态)<br>
+          NextAuth.js（认证）
+        </div>
+      </div>
+
+      <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:12px">
+        <div style="font-weight:700;color:#b45309;margin-bottom:8px">🤖 Worker 层</div>
+        <div style="font-size:12px;line-height:1.8">
+          BullMQ Workers（独立进程）<br>
+          ImageAnalysisWorker<br>
+          &nbsp;→ GLM-5V（视觉）<br>
+          GradingWorker<br>
+          &nbsp;→ DeepSeek（批改）<br>
+          QuestionGenWorker<br>
+          &nbsp;→ DeepSeek（出题）<br>
+          ReportWorker<br>
+          &nbsp;→ DeepSeek（报告）
+        </div>
+      </div>
+
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+
+      <div style="background:#fdf4ff;border:1px solid #a855f7;border-radius:8px;padding:12px">
+        <div style="font-weight:700;color:#7e22ce;margin-bottom:8px">🗄️ 数据层</div>
+        <div style="font-size:12px;line-height:1.8">
+          PostgreSQL 16<br>
+          &nbsp;+ pgvector 扩展<br>
+          Prisma ORM<br>
+          Redis 7（BullMQ）<br>
+          MinIO / OSS（文件）
+        </div>
+      </div>
+
+      <div style="background:#fff1f2;border:1px solid #f43f5e;border-radius:8px;padding:12px">
+        <div style="font-weight:700;color:#be123c;margin-bottom:8px">🧠 AI 模型层</div>
+        <div style="font-size:12px;line-height:1.8">
+          DeepSeek API<br>
+          &nbsp;文本生成 / 推理 / 出题<br>
+          GLM-5V API<br>
+          &nbsp;图像识别 / 批改痕迹<br>
+          模型路由器（可切换）<br>
+          &nbsp;统一接口 AIProvider<br>
+          Embedding（pgvector RAG）
+        </div>
+      </div>
+
+      <div style="background:#f0f9ff;border:1px solid #0ea5e9;border-radius:8px;padding:12px">
+        <div style="font-weight:700;color:#0369a1;margin-bottom:8px">📁 文件处理</div>
+        <div style="font-size:12px;line-height:1.8">
+          上传 → MinIO/OSS<br>
+          图像预处理<br>
+          &nbsp;（旋转/去噪/增强）<br>
+          Base64 → GLM-5V<br>
+          解析结果 → DB<br>
+          局部截图 → bbox 存储
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<div class="mockup" style="margin-top:16px">
+  <div class="mockup-header">关键数据流：作业上传 → AI 处理 → 教师确认</div>
+  <div class="mockup-body" style="font-size:12px;font-family:monospace;line-height:2;padding:16px">
+    教师上传作业图片<br>
+    &nbsp;&nbsp;→ API: POST /api/assignments/upload<br>
+    &nbsp;&nbsp;→ 文件存入 MinIO，返回 file_url<br>
+    &nbsp;&nbsp;→ 创建 submission 记录（status: pending）<br>
+    &nbsp;&nbsp;→ 入队 BullMQ：ImageAnalysisJob { submissionId }<br>
+    &nbsp;&nbsp;→ <strong>立即响应教师：{ jobId, status: "processing" }</strong><br>
+    <br>
+    Worker 拾取任务（异步）<br>
+    &nbsp;&nbsp;→ 下载图片，图像预处理<br>
+    &nbsp;&nbsp;→ 调 GLM-5V：识别题目/答案/批阅痕迹<br>
+    &nbsp;&nbsp;→ 调 DeepSeek：错因分析 + 知识点匹配<br>
+    &nbsp;&nbsp;→ 写 grading_result / teacher_mark 表<br>
+    &nbsp;&nbsp;→ 更新 submission.status = "pending_confirm"<br>
+    &nbsp;&nbsp;→ SSE 推送进度给教师前端<br>
+    <br>
+    教师审核确认<br>
+    &nbsp;&nbsp;→ API: PATCH /api/assignments/:id/confirm<br>
+    &nbsp;&nbsp;→ 触发 StudentMasteryUpdateJob<br>
+    &nbsp;&nbsp;→ 更新 student_mastery 表<br>
+    &nbsp;&nbsp;→ 生成作业报告
+  </div>
+</div>
+
+<div style="margin-top:16px;padding:12px 16px;background:var(--bg);border-radius:8px;font-size:13px">
+  <strong>模型路由器设计（支持切换）</strong><br><br>
+  统一接口 <code>AIProvider</code> 封装：<br>
+  &nbsp;• <code>analyzeImage(imageUrl, prompt)</code> → 默认 GLM-5V，可配置换其他视觉模型<br>
+  &nbsp;• <code>generateText(prompt, context)</code> → 默认 DeepSeek，可配置换 Claude/GPT<br>
+  &nbsp;• <code>generateEmbedding(text)</code> → 用于 pgvector RAG 检索<br>
+  系统设置页面可配置每个能力绑定的模型和 API Key
+</div>

@@ -1,0 +1,83 @@
+<h2>架构方案选择</h2>
+<p class="subtitle">基于 Next.js + PostgreSQL + pgvector + DeepSeek/GLM-4V，三种不同的后端组织方式</p>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>纯 Next.js 单体（最简）</h3>
+      <p style="color:var(--text-secondary);font-size:13px;margin:4px 0 10px">API Routes 直接调 AI，同步处理</p>
+      <div style="background:var(--bg);border-radius:8px;padding:12px;font-size:12px;font-family:monospace;line-height:1.8;margin-bottom:10px">
+        Browser → Next.js API Routes<br>
+        &nbsp;&nbsp;├── /api/assignments → 同步调 GLM-4V<br>
+        &nbsp;&nbsp;├── /api/grading → 同步调 DeepSeek<br>
+        &nbsp;&nbsp;└── /api/questions → 同步调 DeepSeek<br>
+        PostgreSQL + pgvector
+      </div>
+      <div class="pros-cons" style="font-size:12px">
+        <div class="pros"><h4>优点</h4><ul><li>最快能跑起来</li><li>零额外组件</li><li>部署最简单</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>GLM-4V 图像识别 30s+ 超时</li><li>批量作业会阻塞</li><li>无法重试失败任务</li></ul></div>
+      </div>
+      <p style="font-size:12px;color:#888;margin-top:8px">⚠️ OCR/视觉任务超时是主要风险</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Next.js + BullMQ 异步队列 ⭐ 推荐</h3>
+      <p style="color:var(--text-secondary);font-size:13px;margin:4px 0 10px">轻量级任务队列处理长耗时 AI 任务</p>
+      <div style="background:var(--bg);border-radius:8px;padding:12px;font-size:12px;font-family:monospace;line-height:1.8;margin-bottom:10px">
+        Browser → Next.js API Routes（响应快）<br>
+        &nbsp;&nbsp;├── 创建任务 → Redis Queue<br>
+        &nbsp;&nbsp;├── 查询状态 → PostgreSQL<br>
+        &nbsp;&nbsp;└── 获取结果 → PostgreSQL<br>
+        Worker Process（独立进程）<br>
+        &nbsp;&nbsp;├── 拉取任务 → 调 GLM-4V<br>
+        &nbsp;&nbsp;├── 拉取任务 → 调 DeepSeek<br>
+        &nbsp;&nbsp;└── 写结果 → PostgreSQL<br>
+        Redis（任务队列） + PostgreSQL + pgvector
+      </div>
+      <div class="pros-cons" style="font-size:12px">
+        <div class="pros"><h4>优点</h4><ul><li>完全解决超时问题</li><li>任务可重试/取消</li><li>与产品说明书异步设计吻合</li><li>Worker 可独立扩容</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>需要 Redis</li><li>多进程部署</li><li>开发稍复杂</li></ul></div>
+      </div>
+      <p style="font-size:12px;color:#22c55e;margin-top:8px">✅ 最符合产品说明书设计，生产可用</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Next.js + 独立 Python AI 服务</h3>
+      <p style="color:var(--text-secondary);font-size:13px;margin:4px 0 10px">前端 Next.js，AI 能力单独一个 FastAPI 服务</p>
+      <div style="background:var(--bg);border-radius:8px;padding:12px;font-size:12px;font-family:monospace;line-height:1.8;margin-bottom:10px">
+        Browser → Next.js（UI + 业务 API）<br>
+        &nbsp;&nbsp;└── 调用 → FastAPI AI Service<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── /ocr → GLM-4V<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── /grade → DeepSeek<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── /generate → DeepSeek<br>
+        PostgreSQL + pgvector（共享）
+      </div>
+      <div class="pros-cons" style="font-size:12px">
+        <div class="pros"><h4>优点</h4><ul><li>Python AI 生态更丰富</li><li>AI 服务可独立升级</li><li>未来接 PaddleOCR 更容易</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>两套语言维护成本</li><li>服务间网络延迟</li><li>MVP 阶段过度设计</li></ul></div>
+      </div>
+      <p style="font-size:12px;color:#888;margin-top:8px">⚠️ MVP 阶段复杂度偏高</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top:24px;padding:16px;background:var(--bg);border-radius:8px;font-size:13px">
+  <strong>技术栈汇总（方案 B）</strong><br><br>
+  Frontend: Next.js 15 + TypeScript + Ant Design 5<br>
+  Backend: Next.js API Routes + BullMQ Workers<br>
+  Database: PostgreSQL 16 + pgvector<br>
+  Cache/Queue: Redis 7<br>
+  AI Text: DeepSeek API（可切换）<br>
+  AI Vision: GLM-4V API（可切换）<br>
+  File Storage: 本地 / MinIO / OSS（可配置）<br>
+  ORM: Prisma<br>
+</div>

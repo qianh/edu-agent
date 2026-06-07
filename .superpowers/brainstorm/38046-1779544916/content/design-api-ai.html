@@ -1,0 +1,193 @@
+<h2>设计方案 §3：API 路由 & AI 层设计</h2>
+<p class="subtitle">Next.js API Routes 结构 · 模型路由器 · 四类 Worker · 置信度机制</p>
+
+<div class="split">
+
+  <div class="mockup">
+    <div class="mockup-header">API Routes 结构</div>
+    <div class="mockup-body" style="font-size:11.5px;font-family:monospace;line-height:2">
+      <strong style="color:#3b82f6">// 学生</strong><br>
+      GET &nbsp;&nbsp;/api/students<br>
+      POST &nbsp;/api/students<br>
+      GET &nbsp;&nbsp;/api/students/[id]<br>
+      GET &nbsp;&nbsp;/api/students/[id]/mastery<br>
+      GET &nbsp;&nbsp;/api/students/[id]/report<br>
+      POST /api/students/[id]/report/generate<br>
+      <br>
+      <strong style="color:#22c55e">// 作业</strong><br>
+      GET &nbsp;&nbsp;/api/assignments<br>
+      POST &nbsp;/api/assignments/upload<br>
+      GET &nbsp;&nbsp;/api/assignments/[id]<br>
+      GET &nbsp;&nbsp;/api/assignments/[id]/grading<br>
+      PATCH /api/assignments/[id]/grading/confirm<br>
+      GET &nbsp;&nbsp;/api/assignments/[id]/teacher-marks<br>
+      PATCH /api/assignments/[id]/teacher-marks/confirm<br>
+      GET &nbsp;&nbsp;/api/assignments/[id]/review<br>
+      GET &nbsp;&nbsp;/api/assignments/[id]/report<br>
+      <br>
+      <strong style="color:#f59e0b">// 知识点</strong><br>
+      GET &nbsp;&nbsp;/api/knowledge/points<br>
+      POST &nbsp;/api/knowledge/points<br>
+      GET &nbsp;&nbsp;/api/knowledge/points/[id]<br>
+      <br>
+      <strong style="color:#a855f7">// 试题</strong><br>
+      GET &nbsp;&nbsp;/api/questions<br>
+      POST &nbsp;/api/questions/generate<br>
+      POST &nbsp;/api/questions/[id]/approve<br>
+      <br>
+      <strong style="color:#f43f5e">// 任务状态（SSE）</strong><br>
+      GET &nbsp;&nbsp;/api/jobs/[jobId]/status<br>
+      GET &nbsp;&nbsp;/api/jobs/[jobId]/stream &nbsp;← SSE<br>
+      <br>
+      <strong style="color:#0ea5e9">// 数据看板</strong><br>
+      GET &nbsp;&nbsp;/api/dashboard/class/[id]
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">AI 层：模型路由器 & Worker 设计</div>
+    <div class="mockup-body" style="font-size:12px">
+
+      <div style="background:#fef3c7;border-radius:6px;padding:10px;margin-bottom:10px">
+        <strong>AIProvider 统一接口</strong>
+        <div style="font-family:monospace;font-size:11px;line-height:1.8;margin-top:6px;color:#555">
+          interface AIProvider {<br>
+          &nbsp;&nbsp;analyzeImage(url, prompt, opts)<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;// → GLM-5V 默认<br>
+          &nbsp;&nbsp;generateText(prompt, ctx, opts)<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;// → DeepSeek 默认<br>
+          &nbsp;&nbsp;generateEmbedding(text)<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;// → 用于 pgvector RAG<br>
+          }
+        </div>
+        <div style="font-size:11px;color:#888;margin-top:4px">
+          系统设置页绑定每个接口的模型+API Key<br>
+          单例 providerRegistry，运行时可热切换
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+
+        <div style="background:#f0f7ff;border:1px solid #93c5fd;border-radius:6px;padding:8px">
+          <div style="font-weight:700;font-size:11px;color:#1d4ed8;margin-bottom:4px">ImageAnalysisWorker</div>
+          <div style="font-size:11px;color:#555;line-height:1.6">
+            触发：作业上传后<br>
+            输入：file_url, mode<br>
+            调用：GLM-5V<br>
+            输出：题目区域 · 学生答案<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;批阅痕迹 · bbox · 置信度<br>
+            写表：TeacherMark, GradingResult
+          </div>
+        </div>
+
+        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:8px">
+          <div style="font-weight:700;font-size:11px;color:#15803d;margin-bottom:4px">GradingWorker</div>
+          <div style="font-size:11px;color:#555;line-height:1.6">
+            触发：ImageAnalysis 完成后<br>
+            输入：题目+学生答案+标准答案<br>
+            调用：DeepSeek<br>
+            输出：建议分 · 错因类型<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;知识点匹配 · 置信度<br>
+            写表：GradingResult(更新)
+          </div>
+        </div>
+
+        <div style="background:#fdf4ff;border:1px solid #d8b4fe;border-radius:6px;padding:8px">
+          <div style="font-weight:700;font-size:11px;color:#7e22ce;margin-bottom:4px">QuestionGenWorker</div>
+          <div style="font-size:11px;color:#555;line-height:1.6">
+            触发：教师点击生成试题<br>
+            输入：学生薄弱点 · 参数<br>
+            调用：DeepSeek<br>
+            输出：题目 · 答案 · 解析<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;错因预判 · 命题意图<br>
+            写表：Question(草稿)
+          </div>
+        </div>
+
+        <div style="background:#fff1f2;border:1px solid #fda4af;border-radius:6px;padding:8px">
+          <div style="font-weight:700;font-size:11px;color:#be123c;margin-bottom:4px">MasteryUpdateWorker</div>
+          <div style="font-size:11px;color:#555;line-height:1.6">
+            触发：教师确认批阅后<br>
+            输入：submissionId<br>
+            逻辑：加权计算掌握度<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（难度·分值·错因·趋势）<br>
+            写表：StudentMastery(upsert)<br>
+            触发：ReportGenWorker
+          </div>
+        </div>
+
+      </div>
+
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px">
+        <strong style="font-size:12px">置信度机制</strong>
+        <div style="font-size:11px;color:#555;line-height:1.7;margin-top:4px">
+          ≥ 85%：自动展示，绿色标记<br>
+          70–84%：展示但橙色提示「建议确认」<br>
+          &lt; 70%：红色标记「需要复核」，阻断自动入库<br>
+          <br>
+          GLM-5V 返回结构化 JSON：<br>
+          { question_no, mark_type, score, text,<br>
+          &nbsp;&nbsp;bbox, confidence, reasoning }
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<div class="mockup" style="margin-top:16px">
+  <div class="mockup-header">三种批阅模式的处理链对比</div>
+  <div class="mockup-body" style="font-size:12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+
+      <div style="border-left:3px solid #3b82f6;padding-left:10px">
+        <div style="font-weight:700;color:#1d4ed8;margin-bottom:6px">模式①：未批阅 AI 批改</div>
+        <div style="font-family:monospace;font-size:11px;line-height:1.8;color:#555">
+          上传<br>
+          → ImageAnalysisWorker<br>
+          &nbsp;&nbsp;&nbsp;GLM-5V 识别题目+答案<br>
+          → GradingWorker<br>
+          &nbsp;&nbsp;&nbsp;DeepSeek 判分+错因<br>
+          → 前端展示 AI 建议分<br>
+          → 教师修改并确认<br>
+          → MasteryUpdateWorker
+        </div>
+      </div>
+
+      <div style="border-left:3px solid #22c55e;padding-left:10px">
+        <div style="font-weight:700;color:#15803d;margin-bottom:6px">模式②：已批阅痕迹识别</div>
+        <div style="font-family:monospace;font-size:11px;line-height:1.8;color:#555">
+          上传<br>
+          → ImageAnalysisWorker<br>
+          &nbsp;&nbsp;&nbsp;GLM-5V 识别三层：<br>
+          &nbsp;&nbsp;&nbsp;原题/学生答案/批阅层<br>
+          &nbsp;&nbsp;&nbsp;提取 ✓ ✗ 扣分 评语<br>
+          → GradingWorker<br>
+          &nbsp;&nbsp;&nbsp;知识点匹配+错因分析<br>
+          → 前端展示识别结果<br>
+          → 教师确认<br>
+          → MasteryUpdateWorker
+        </div>
+      </div>
+
+      <div style="border-left:3px solid #a855f7;padding-left:10px">
+        <div style="font-weight:700;color:#7e22ce;margin-bottom:6px">模式③：已批阅 + AI 复核</div>
+        <div style="font-family:monospace;font-size:11px;line-height:1.8;color:#555">
+          上传<br>
+          → ImageAnalysisWorker（同②）<br>
+          &nbsp;&nbsp;&nbsp;识别教师批阅结果<br>
+          → ReviewWorker（并行）<br>
+          &nbsp;&nbsp;&nbsp;DeepSeek 独立判分<br>
+          → 对比两份结果<br>
+          &nbsp;&nbsp;&nbsp;标记疑似不一致题目<br>
+          → 前端展示复核建议<br>
+          &nbsp;&nbsp;&nbsp;「疑似需确认」措辞<br>
+          → 教师逐项确认<br>
+          → MasteryUpdateWorker
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

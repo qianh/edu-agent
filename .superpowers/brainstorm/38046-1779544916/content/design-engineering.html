@@ -1,0 +1,181 @@
+<h2>设计方案 §5：错误处理 · 测试策略 · 工程规范</h2>
+<p class="subtitle">AI 任务重试 · 三层测试 · 环境变量 · 开发启动</p>
+
+<div class="split">
+
+  <div class="mockup">
+    <div class="mockup-header">错误处理策略</div>
+    <div class="mockup-body" style="font-size:12px">
+
+      <div style="margin-bottom:12px">
+        <div style="font-weight:700;color:#be123c;margin-bottom:6px">AI API 调用失败</div>
+        <div style="background:#fff1f2;border-radius:6px;padding:10px;font-size:11.5px;line-height:1.7">
+          BullMQ 自动重试策略：<br>
+          • 重试 3 次，指数退避（5s / 30s / 2min）<br>
+          • GLM-5V 超时限制：60s per 请求<br>
+          • 3 次全失败 → job.status = "failed"<br>
+          • SSE 推送失败通知，前端展示重试按钮<br>
+          • 写 AIJob.error 字段供审计查看
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px">
+        <div style="font-weight:700;color:#b45309;margin-bottom:6px">低置信度处理</div>
+        <div style="background:#fffbeb;border-radius:6px;padding:10px;font-size:11.5px;line-height:1.7">
+          识别结果置信度 &lt; 70%：<br>
+          • 不阻断流程，标记为 needs_review<br>
+          • 前端用橙/红色视觉提示教师<br>
+          • 「全部确认」按钮变灰，需逐一处理低置信项<br>
+          • 低置信结果不触发 MasteryUpdateWorker
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px">
+        <div style="font-weight:700;color:#7e22ce;margin-bottom:6px">文件处理失败</div>
+        <div style="background:#fdf4ff;border-radius:6px;padding:10px;font-size:11.5px;line-height:1.7">
+          上传大文件超出限制 → 前端校验拦截（&lt;20MB）<br>
+          图片格式不支持 → 上传前检查 MIME 类型<br>
+          MinIO 上传失败 → 事务回滚，不创建 submission 记录<br>
+          GLM-5V 图像无法解析 → 返回 parse_error，提示重新拍摄
+        </div>
+      </div>
+
+      <div>
+        <div style="font-weight:700;color:#1d4ed8;margin-bottom:6px">API 错误响应规范</div>
+        <div style="background:#f0f7ff;border-radius:6px;padding:10px;font-size:11px;font-family:monospace;line-height:1.8">
+          // 统一错误格式<br>
+          { error: { code, message, details? } }<br>
+          <br>
+          // 错误码约定<br>
+          400 VALIDATION_ERROR<br>
+          401 UNAUTHORIZED<br>
+          403 FORBIDDEN &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← 教师越权访问<br>
+          404 NOT_FOUND<br>
+          409 CONFLICT &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← 重复提交<br>
+          422 AI_PARSE_ERROR &nbsp;← 图像无法识别<br>
+          503 AI_UNAVAILABLE &nbsp;← 模型 API 不可用
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">测试策略</div>
+    <div class="mockup-body" style="font-size:12px">
+
+      <div style="margin-bottom:12px">
+        <div style="font-weight:700;color:#15803d;margin-bottom:6px">① 单元测试（Vitest）</div>
+        <div style="background:#f0fdf4;border-radius:6px;padding:10px;font-size:11.5px;line-height:1.7">
+          重点测试纯计算逻辑，不 mock AI：<br>
+          • <code>mastery/calculator.ts</code>：掌握度更新算法<br>
+          &nbsp;&nbsp;多种场景：首次/重复错/权重/趋势<br>
+          • <code>ai/provider.ts</code>：模型路由选择逻辑<br>
+          • <code>lib/confidence.ts</code>：置信度分档规则<br>
+          • 错因标签映射与知识点匹配规则
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px">
+        <div style="font-weight:700;color:#0369a1;margin-bottom:6px">② 集成测试（Vitest + 测试 DB）</div>
+        <div style="background:#f0f9ff;border-radius:6px;padding:10px;font-size:11.5px;line-height:1.7">
+          测试 API Routes + Prisma（用测试数据库）：<br>
+          • 作业上传流程：创建记录→入队→状态查询<br>
+          • 教师确认：分数更新→画像触发→报告生成<br>
+          • 权限隔离：教师只能访问自己班级数据<br>
+          AI Worker 用 mock provider 替代真实 API
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px">
+        <div style="font-weight:700;color:#7e22ce;margin-bottom:6px">③ E2E 测试（Playwright）</div>
+        <div style="background:#fdf4ff;border-radius:6px;padding:10px;font-size:11.5px;line-height:1.7">
+          覆盖 3 条核心主流程：<br>
+          • 上传未批阅作业 → AI 批改 → 教师确认 → 画像更新<br>
+          • 上传已批阅作业 → 识别结果 → 确认入库<br>
+          • 学生详情 → 生成试题 → 审核保存
+        </div>
+      </div>
+
+      <div>
+        <div style="font-weight:700;color:#b45309;margin-bottom:6px">AI 输出质量验收</div>
+        <div style="background:#fffbeb;border-radius:6px;padding:10px;font-size:11.5px;line-height:1.7">
+          独立验收脚本（非 CI）：<br>
+          • 准备 20 份标注好的作业样本<br>
+          • 对比 GLM-5V 识别结果 vs 人工标注<br>
+          • 目标：批阅痕迹识别准确率 ≥ 85%<br>
+          • 目标：扣分识别准确率 ≥ 90%<br>
+          • 不满足则调整 prompt，不改架构
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<div class="mockup" style="margin-top:16px">
+  <div class="mockup-header">工程规范：环境变量 & 开发启动</div>
+  <div class="mockup-body" style="font-size:12px">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+
+      <div>
+        <div style="font-weight:700;color:#444;margin-bottom:6px">.env 环境变量</div>
+        <div style="font-family:monospace;font-size:11px;line-height:1.9;background:#f8fafc;padding:10px;border-radius:6px;color:#555">
+          # 数据库<br>
+          DATABASE_URL=postgresql://...<br>
+          REDIS_URL=redis://localhost:6379<br>
+          <br>
+          # 文件存储<br>
+          STORAGE_TYPE=minio &nbsp;<span style="color:#888"># or oss</span><br>
+          MINIO_ENDPOINT=...<br>
+          MINIO_ACCESS_KEY=...<br>
+          MINIO_SECRET_KEY=...<br>
+          <br>
+          # AI 模型（系统设置页也可覆盖）<br>
+          DEEPSEEK_API_KEY=...<br>
+          DEEPSEEK_BASE_URL=...<br>
+          GLM_API_KEY=...<br>
+          GLM_BASE_URL=...<br>
+          <br>
+          # Auth<br>
+          NEXTAUTH_SECRET=...<br>
+          NEXTAUTH_URL=http://localhost:3000
+        </div>
+      </div>
+
+      <div>
+        <div style="font-weight:700;color:#444;margin-bottom:6px">开发启动 & 部署</div>
+        <div style="font-family:monospace;font-size:11px;line-height:1.9;background:#f8fafc;padding:10px;border-radius:6px;color:#555">
+          # 依赖<br>
+          pnpm install<br>
+          <br>
+          # 基础设施（Docker）<br>
+          docker compose up -d<br>
+          <span style="color:#888"># → PostgreSQL + Redis + MinIO</span><br>
+          <br>
+          # 数据库初始化<br>
+          pnpm prisma migrate dev<br>
+          pnpm prisma db seed<br>
+          <br>
+          # 启动（开发）<br>
+          pnpm dev &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#888"># Next.js :3000</span><br>
+          pnpm worker &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#888"># BullMQ Worker</span><br>
+          <br>
+          # 生产部署<br>
+          docker compose -f compose.prod.yml up<br>
+          <span style="color:#888"># → next start + worker + pg + redis + minio</span>
+        </div>
+        <div style="margin-top:10px;padding:8px;background:#f0f9ff;border-radius:6px;font-size:11.5px;line-height:1.6">
+          <strong>docker-compose.yml 服务：</strong><br>
+          web（Next.js）· worker（BullMQ）<br>
+          postgres · redis · minio<br>
+          共 5 个容器，单机可运行
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>

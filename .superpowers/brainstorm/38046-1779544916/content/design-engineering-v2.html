@@ -1,0 +1,158 @@
+<h2>设计方案 §5（更新）：错误处理 · 测试策略 · 工程规范</h2>
+<p class="subtitle">去掉 Docker，本地直装依赖，生产直接部署</p>
+
+<div class="split">
+
+  <div class="mockup">
+    <div class="mockup-header">错误处理策略（不变）</div>
+    <div class="mockup-body" style="font-size:12px">
+
+      <div style="margin-bottom:10px">
+        <div style="font-weight:700;color:#be123c;margin-bottom:5px">AI API 调用失败</div>
+        <div style="background:#fff1f2;border-radius:6px;padding:9px;font-size:11.5px;line-height:1.7">
+          BullMQ 自动重试：3 次，指数退避 5s/30s/2min<br>
+          GLM-5V 超时限制：60s per 请求<br>
+          全失败 → job.status = "failed"，SSE 推送通知
+        </div>
+      </div>
+
+      <div style="margin-bottom:10px">
+        <div style="font-weight:700;color:#b45309;margin-bottom:5px">低置信度</div>
+        <div style="background:#fffbeb;border-radius:6px;padding:9px;font-size:11.5px;line-height:1.7">
+          &lt;70% → 标记 needs_review，阻断画像更新<br>
+          70–84% → 橙色提示「建议确认」<br>
+          ≥85% → 绿色，可直接批量确认
+        </div>
+      </div>
+
+      <div>
+        <div style="font-weight:700;color:#1d4ed8;margin-bottom:5px">API 错误响应</div>
+        <div style="background:#f0f7ff;border-radius:6px;padding:9px;font-size:11px;font-family:monospace;line-height:1.8">
+          { error: { code, message, details? } }<br>
+          400 VALIDATION_ERROR<br>
+          403 FORBIDDEN<br>
+          422 AI_PARSE_ERROR<br>
+          503 AI_UNAVAILABLE
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">测试策略（不变）</div>
+    <div class="mockup-body" style="font-size:12px">
+
+      <div style="margin-bottom:10px">
+        <div style="font-weight:700;color:#15803d;margin-bottom:5px">① 单元测试（Vitest）</div>
+        <div style="background:#f0fdf4;border-radius:6px;padding:9px;font-size:11.5px;line-height:1.7">
+          掌握度计算 · 置信度分档 · 模型路由逻辑<br>
+          纯函数，零 AI 依赖
+        </div>
+      </div>
+
+      <div style="margin-bottom:10px">
+        <div style="font-weight:700;color:#0369a1;margin-bottom:5px">② 集成测试（Vitest + 本地测试 DB）</div>
+        <div style="background:#f0f9ff;border-radius:6px;padding:9px;font-size:11.5px;line-height:1.7">
+          API Routes + Prisma，连本地 PostgreSQL 测试库<br>
+          Worker 用 mock provider 替代真实 AI
+        </div>
+      </div>
+
+      <div style="margin-bottom:10px">
+        <div style="font-weight:700;color:#7e22ce;margin-bottom:5px">③ E2E（Playwright）</div>
+        <div style="background:#fdf4ff;border-radius:6px;padding:9px;font-size:11.5px;line-height:1.7">
+          3 条主流程：上传AI批改 · 批阅识别 · 试题生成
+        </div>
+      </div>
+
+      <div>
+        <div style="font-weight:700;color:#b45309;margin-bottom:5px">AI 质量验收（离线脚本）</div>
+        <div style="background:#fffbeb;border-radius:6px;padding:9px;font-size:11.5px;line-height:1.7">
+          20 份标注样本 · 痕迹识别 ≥85% · 扣分 ≥90%<br>
+          不达标调 prompt，不改架构
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<div class="mockup" style="margin-top:16px">
+  <div class="mockup-header">工程规范：本地直装 + 直接部署（无 Docker）</div>
+  <div class="mockup-body" style="font-size:12px">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+
+      <div>
+        <div style="font-weight:700;color:#444;margin-bottom:8px">开发环境前置依赖（直装）</div>
+        <div style="background:#f8fafc;border-radius:6px;padding:10px;font-size:11.5px;line-height:1.9">
+
+          <div style="margin-bottom:8px">
+            <span style="background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:4px;font-size:10.5px;font-weight:600">PostgreSQL 16</span><br>
+            <span style="color:#666;font-size:11px">macOS: brew install postgresql@16<br>
+            Windows: 官网安装包<br>
+            启用 pgvector: CREATE EXTENSION vector;</span>
+          </div>
+
+          <div style="margin-bottom:8px">
+            <span style="background:#fef3c7;color:#b45309;padding:2px 6px;border-radius:4px;font-size:10.5px;font-weight:600">Redis 7</span><br>
+            <span style="color:#666;font-size:11px">macOS: brew install redis<br>
+            Windows: Redis for Windows / WSL<br>
+            启动: redis-server</span>
+          </div>
+
+          <div>
+            <span style="background:#f0fdf4;color:#15803d;padding:2px 6px;border-radius:4px;font-size:10.5px;font-weight:600">文件存储</span><br>
+            <span style="color:#666;font-size:11px">MVP 阶段：本地文件系统（./uploads/）<br>
+            生产阶段：配置阿里云 OSS / 腾讯云 COS<br>
+            STORAGE_TYPE=local | oss | cos</span>
+          </div>
+
+        </div>
+      </div>
+
+      <div>
+        <div style="font-weight:700;color:#444;margin-bottom:8px">开发启动 & 生产部署</div>
+        <div style="font-family:monospace;font-size:11px;line-height:2;background:#f8fafc;padding:10px;border-radius:6px;color:#555">
+          <strong style="color:#333"># 开发启动</strong><br>
+          pnpm install<br>
+          pnpm prisma migrate dev<br>
+          pnpm prisma db seed<br>
+          <br>
+          # 终端 1<br>
+          pnpm dev &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#888"># Next.js :3000</span><br>
+          # 终端 2<br>
+          pnpm worker &nbsp;<span style="color:#888"># BullMQ Worker</span><br>
+          <br>
+          <strong style="color:#333"># 生产部署（Linux 服务器）</strong><br>
+          pnpm build<br>
+          pm2 start ecosystem.config.js<br>
+          <span style="color:#888"># pm2 管理两个进程：</span><br>
+          <span style="color:#888"># next start (port 3000)</span><br>
+          <span style="color:#888"># node worker/index.js</span><br>
+          <br>
+          <strong style="color:#333"># Nginx 反代 :3000</strong><br>
+          <span style="color:#888"># SSL 用 certbot / 自签证书</span>
+        </div>
+
+        <div style="margin-top:10px;padding:8px;background:#f0f9ff;border-radius:6px;font-size:11.5px;line-height:1.7">
+          <strong>pm2 ecosystem.config.js 管理两个进程</strong><br>
+          web: next start<br>
+          worker: node lib/queue/worker-entry.js<br>
+          PostgreSQL + Redis 作为系统服务运行
+        </div>
+
+      </div>
+
+    </div>
+
+    <div style="margin-top:12px;padding:10px 14px;background:#fef9e7;border:1px solid #f59e0b;border-radius:8px;font-size:12px;line-height:1.7">
+      <strong>文件存储策略（MVP → 生产升级路径）</strong><br>
+      MVP 阶段：<code>STORAGE_TYPE=local</code>，文件存 <code>./uploads/</code>，Next.js 静态路由直接提供服务<br>
+      生产阶段：改 <code>STORAGE_TYPE=oss</code>，填入 OSS 配置，上传逻辑不变，只切存储层
+    </div>
+
+  </div>
+</div>

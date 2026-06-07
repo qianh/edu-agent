@@ -1,0 +1,12 @@
+{"type":"server-started","port":51109,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:51109","screen_dir":"/Users/john/private/ai/school/edu-agent/.superpowers/brainstorm/38046-1779544916/content","state_dir":"/Users/john/private/ai/school/edu-agent/.superpowers/brainstorm/38046-1779544916/state"}
+{"type":"screen-added","file":"/Users/john/private/ai/school/edu-agent/.superpowers/brainstorm/38046-1779544916/content/welcome.html"}
+{"type":"screen-added","file":"/Users/john/private/ai/school/edu-agent/.superpowers/brainstorm/38046-1779544916/content/approaches.html"}
+{"type":"screen-added","file":"/Users/john/private/ai/school/edu-agent/.superpowers/brainstorm/38046-1779544916/content/approaches-v2.html"}
+{"type":"screen-added","file":"/Users/john/private/ai/school/edu-agent/.superpowers/brainstorm/38046-1779544916/content/design-arch.html"}
+{"type":"screen-added","file":"/Users/john/private/ai/school/edu-agent/.superpowers/brainstorm/38046-1779544916/content/design-modules.html"}
+{"type":"screen-added","file":"/Users/john/private/ai/school/edu-agent/.superpowers/brainstorm/38046-1779544916/content/design-api-ai.html"}
+{"type":"screen-added","file":"/Users/john/private/ai/school/edu-agent/.superpowers/brainstorm/38046-1779544916/content/design-frontend.html"}
+{"type":"screen-added","file":"/Users/john/private/ai/school/edu-agent/.superpowers/brainstorm/38046-1779544916/content/design-engineering.html"}
+{"type":"screen-added","file":"/Users/john/private/ai/school/edu-agent/.superpowers/brainstorm/38046-1779544916/content/design-engineering-v2.html"}
+{"type":"screen-added","file":"/Users/john/private/ai/school/edu-agent/.superpowers/brainstorm/38046-1779544916/content/waiting.html"}
+{"type":"server-stopped","reason":"idle timeout"}

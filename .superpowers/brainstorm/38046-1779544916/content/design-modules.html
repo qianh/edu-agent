@@ -1,0 +1,166 @@
+<h2>设计方案 §2：MVP 模块拆分与数据模型</h2>
+<p class="subtitle">7 个核心模块 + 11 张核心表，覆盖第一阶段完整闭环</p>
+
+<div class="mockup">
+  <div class="mockup-header">MVP 第一阶段：7 个模块 & 页面对应</div>
+  <div class="mockup-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px">
+
+      <div style="border:1px solid #3b82f6;border-radius:8px;padding:10px;background:#f0f7ff">
+        <div style="font-weight:700;color:#1d4ed8;margin-bottom:6px">① 学生管理</div>
+        <div style="color:#555;line-height:1.7">
+          页面：/students, /students/[id]<br>
+          功能：学生列表 · 筛选 · 风险等级<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;学生详情 · 能力雷达图<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;知识点掌握热力图<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;作业历史 · 错题记录
+        </div>
+      </div>
+
+      <div style="border:1px solid #22c55e;border-radius:8px;padding:10px;background:#f0fdf4">
+        <div style="font-weight:700;color:#15803d;margin-bottom:6px">② 作业上传</div>
+        <div style="color:#555;line-height:1.7">
+          页面：/assignments/upload<br>
+          功能：选批阅模式（3种）<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;绑定学生/班级<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;文件上传（图片/PDF）<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;标准答案关联<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;提交→入队→进度反馈
+        </div>
+      </div>
+
+      <div style="border:1px solid #f59e0b;border-radius:8px;padding:10px;background:#fffbeb">
+        <div style="font-weight:700;color:#b45309;margin-bottom:6px">③ AI 批改结果</div>
+        <div style="color:#555;line-height:1.7">
+          页面：/assignments/[id]/grading<br>
+          功能：作业图+标注叠加层<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;每题 AI 建议分 · 错因<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;教师修改 · 置信度提示<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;一键确认入库
+        </div>
+      </div>
+
+      <div style="border:1px solid #a855f7;border-radius:8px;padding:10px;background:#fdf4ff">
+        <div style="font-weight:700;color:#7e22ce;margin-bottom:6px">④ 批阅痕迹识别</div>
+        <div style="color:#555;line-height:1.7">
+          页面：/assignments/[id]/teacher-marks<br>
+          功能：对勾/叉/扣分/评语识别<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;痕迹归属题号<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;低置信度高亮提示<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;AI 复核模式（可选）
+        </div>
+      </div>
+
+      <div style="border:1px solid #f43f5e;border-radius:8px;padding:10px;background:#fff1f2">
+        <div style="font-weight:700;color:#be123c;margin-bottom:6px">⑤ 知识点管理</div>
+        <div style="color:#555;line-height:1.7">
+          页面：/knowledge/points<br>
+          功能：知识点列表 · 树状结构<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;题目→知识点关联<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（MVP 暂不含教材解析）
+        </div>
+      </div>
+
+      <div style="border:1px solid #0ea5e9;border-radius:8px;padding:10px;background:#f0f9ff">
+        <div style="font-weight:700;color:#0369a1;margin-bottom:6px">⑥ 学生画像（自动更新）</div>
+        <div style="color:#555;line-height:1.7">
+          无独立页面，嵌入学生详情<br>
+          功能：掌握度计算引擎<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;雷达图 · 热力图<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;诊断报告生成<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;教师确认后自动触发
+        </div>
+      </div>
+
+      <div style="border:1px solid #10b981;border-radius:8px;padding:10px;background:#ecfdf5;grid-column:1/-1">
+        <div style="font-weight:700;color:#047857;margin-bottom:6px">⑦ 个性化试题生成</div>
+        <div style="color:#555;line-height:1.7">
+          页面：/questions/generate<br>
+          功能：学生薄弱点自动带入参数 · 题型/难度/数量选择 · DeepSeek 生成 · 教师审核 · 保存题库/导出
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top:16px">
+  <div class="mockup-header">核心数据模型（ER 关系简图）</div>
+  <div class="mockup-body" style="font-size:12px">
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+
+      <div style="background:#e8f4fd;border:1px solid #93c5fd;border-radius:6px;padding:8px">
+        <div style="font-weight:700;color:#1d4ed8;margin-bottom:4px">Teacher</div>
+        <div style="color:#555;line-height:1.6">id, name, phone<br>email, school<br>subject, role</div>
+      </div>
+
+      <div style="background:#e8f4fd;border:1px solid #93c5fd;border-radius:6px;padding:8px">
+        <div style="font-weight:700;color:#1d4ed8;margin-bottom:4px">Class</div>
+        <div style="color:#555;line-height:1.6">id, name, grade<br>teacher_id →<br>subject</div>
+      </div>
+
+      <div style="background:#e8f4fd;border:1px solid #93c5fd;border-radius:6px;padding:8px">
+        <div style="font-weight:700;color:#1d4ed8;margin-bottom:4px">Student</div>
+        <div style="color:#555;line-height:1.6">id, name, student_no<br>class_id →<br>grade, tags[]</div>
+      </div>
+
+      <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:8px">
+        <div style="font-weight:700;color:#15803d;margin-bottom:4px">KnowledgePoint</div>
+        <div style="color:#555;line-height:1.6">id, name, subject<br>grade, chapter<br>difficulty, parent_id →</div>
+      </div>
+
+      <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:8px">
+        <div style="font-weight:700;color:#b45309;margin-bottom:4px">Assignment</div>
+        <div style="color:#555;line-height:1.6">id, title, subject<br>class_id →<br>grading_mode<br>teacher_id →</div>
+      </div>
+
+      <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:8px">
+        <div style="font-weight:700;color:#b45309;margin-bottom:4px">Submission</div>
+        <div style="color:#555;line-height:1.6">id, assignment_id →<br>student_id →<br>file_url, status<br>total_score_confirmed</div>
+      </div>
+
+      <div style="background:#fdf4ff;border:1px solid #d8b4fe;border-radius:6px;padding:8px">
+        <div style="font-weight:700;color:#7e22ce;margin-bottom:4px">TeacherMark</div>
+        <div style="color:#555;line-height:1.6">id, submission_id →<br>question_no, mark_type<br>mark_text, bbox<br>confidence</div>
+      </div>
+
+      <div style="background:#fdf4ff;border:1px solid #d8b4fe;border-radius:6px;padding:8px">
+        <div style="font-weight:700;color:#7e22ce;margin-bottom:4px">GradingResult</div>
+        <div style="color:#555;line-height:1.6">id, submission_id →<br>question_no<br>ai_score, final_score<br>error_type, kp_id →<br>conflict_flag</div>
+      </div>
+
+      <div style="background:#fff1f2;border:1px solid #fda4af;border-radius:6px;padding:8px">
+        <div style="font-weight:700;color:#be123c;margin-bottom:4px">StudentMastery</div>
+        <div style="color:#555;line-height:1.6">id, student_id →<br>kp_id →<br>mastery_score 0-100<br>evidence_count<br>last_updated</div>
+      </div>
+
+      <div style="background:#fff1f2;border:1px solid #fda4af;border-radius:6px;padding:8px">
+        <div style="font-weight:700;color:#be123c;margin-bottom:4px">DiagnosisReport</div>
+        <div style="color:#555;line-height:1.6">id, student_id →<br>generated_at<br>content (JSON)<br>confirmed_by</div>
+      </div>
+
+      <div style="background:#f0f9ff;border:1px solid #7dd3fc;border-radius:6px;padding:8px">
+        <div style="font-weight:700;color:#0369a1;margin-bottom:4px">Question</div>
+        <div style="color:#555;line-height:1.6">id, content, type<br>answer, explanation<br>kp_id →, difficulty<br>source, status</div>
+      </div>
+
+      <div style="background:#f0f9ff;border:1px solid #7dd3fc;border-radius:6px;padding:8px">
+        <div style="font-weight:700;color:#0369a1;margin-bottom:4px">AIJob</div>
+        <div style="color:#555;line-height:1.6">id, type, status<br>submission_id →<br>result (JSON)<br>error, created_at</div>
+      </div>
+
+    </div>
+
+    <div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:6px;line-height:1.8">
+      <strong>主要关系：</strong><br>
+      Teacher → Class(1:N) → Student(1:N)<br>
+      Assignment → Submission(1:N，每学生一份)<br>
+      Submission → TeacherMark(1:N) + GradingResult(1:N per 题)<br>
+      GradingResult → KnowledgePoint(N:1)<br>
+      Student + KnowledgePoint → StudentMastery（多次作业累积更新）<br>
+      KnowledgePoint → Question(1:N)
+    </div>
+
+  </div>
+</div>

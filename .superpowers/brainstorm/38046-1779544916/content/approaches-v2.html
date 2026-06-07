@@ -1,0 +1,94 @@
+<h2>架构方案选择（更新：GLM-5V）</h2>
+<p class="subtitle">基于 Next.js + PostgreSQL + pgvector + DeepSeek / GLM-5V，重新评估三种方案</p>
+
+<div class="section" style="background:#fef9e7;border:1px solid #f39c12;border-radius:8px;padding:12px 16px;font-size:13px;margin-bottom:20px">
+  <strong>🔄 GLM-5V 重新评估</strong><br>
+  GLM-5V 相比 4V：推理速度更快、图像理解更强、手写/印刷混排识别更准。<br>
+  但对架构选型的核心影响是：<strong>单张图处理时间压缩（约 8–15s），批量仍需异步</strong>。
+</div>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>纯 Next.js 单体</h3>
+      <p style="color:var(--text-secondary);font-size:13px;margin:4px 0 10px">API Routes 直接调 AI，同步处理</p>
+      <div style="background:var(--bg);border-radius:8px;padding:12px;font-size:12px;font-family:monospace;line-height:1.8;margin-bottom:10px">
+        Browser → Next.js API Routes<br>
+        &nbsp;&nbsp;├── /api/assignments → GLM-5V（单张 ~10s）<br>
+        &nbsp;&nbsp;├── /api/grading → DeepSeek<br>
+        &nbsp;&nbsp;└── /api/questions → DeepSeek<br>
+        PostgreSQL + pgvector
+      </div>
+      <div style="font-size:12px;padding:8px 12px;background:#fff3cd;border-radius:6px;margin-bottom:8px">
+        <strong>GLM-5V 重评：</strong>单张处理约 8–15s，Vercel/标准 Node 默认超时 30s，<em>单张勉强可行</em>，但一次上传多页/多学生仍会超时。MVP 阶段单学生单页上传可 workaround，但不稳健。
+      </div>
+      <div class="pros-cons" style="font-size:12px">
+        <div class="pros"><h4>优点</h4><ul><li>零额外组件</li><li>最快能跑起来</li><li>GLM-5V 速度提升后单张可用</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>多页/多学生仍超时</li><li>无重试机制</li><li>教师等待 UI 体验差</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Next.js + BullMQ 异步队列 ⭐ 推荐</h3>
+      <p style="color:var(--text-secondary);font-size:13px;margin:4px 0 10px">API 秒级响应，Worker 后台处理 AI 任务</p>
+      <div style="background:var(--bg);border-radius:8px;padding:12px;font-size:12px;font-family:monospace;line-height:1.8;margin-bottom:10px">
+        Browser → API Routes（立刻返回 task_id）<br>
+        &nbsp;&nbsp;└── 入队 → Redis/BullMQ<br>
+        Worker Process<br>
+        &nbsp;&nbsp;├── 图像预处理 → GLM-5V（每张 ~10s）<br>
+        &nbsp;&nbsp;├── 文本分析 → DeepSeek<br>
+        &nbsp;&nbsp;└── 写结果 → PostgreSQL<br>
+        前端轮询/SSE → 实时进度<br>
+        PostgreSQL + pgvector + Redis
+      </div>
+      <div style="font-size:12px;padding:8px 12px;background:#d4edda;border-radius:6px;margin-bottom:8px">
+        <strong>GLM-5V 重评：</strong>速度提升让 Worker 吞吐量更高，单 Worker 每分钟可处理 4–6 张。班级 40 人作业约 10 分钟完成，完全符合产品说明书"异步通知"设计。
+      </div>
+      <div class="pros-cons" style="font-size:12px">
+        <div class="pros"><h4>优点</h4><ul><li>彻底解决超时</li><li>可重试/取消/进度</li><li>GLM-5V 速度↑ Worker 吞吐更好</li><li>符合产品异步设计</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>需要 Redis（Docker 一行搞定）</li><li>Worker 需单独进程</li></ul></div>
+      </div>
+      <p style="font-size:12px;color:#22c55e;margin-top:8px">✅ 推荐：GLM-5V 速度提升让这个方案效果更好，而不是让 A 方案够用</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Next.js + Python FastAPI AI 服务</h3>
+      <p style="color:var(--text-secondary);font-size:13px;margin:4px 0 10px">AI 能力单独服务，前后端分离语言</p>
+      <div style="background:var(--bg);border-radius:8px;padding:12px;font-size:12px;font-family:monospace;line-height:1.8;margin-bottom:10px">
+        Next.js → FastAPI AI Service<br>
+        &nbsp;&nbsp;├── /ocr → GLM-5V<br>
+        &nbsp;&nbsp;├── /grade → DeepSeek<br>
+        &nbsp;&nbsp;└── /detect-marks → GLM-5V<br>
+        PostgreSQL + pgvector（共享）
+      </div>
+      <div style="font-size:12px;padding:8px 12px;background:#fff3cd;border-radius:6px;margin-bottom:8px">
+        <strong>GLM-5V 重评：</strong>影响不大。Python 调 GLM-5V 的 SDK 体验与 JS SDK 相近，不构成语言切换的新理由。MVP 阶段两套语言维护成本依然偏高。
+      </div>
+      <div class="pros-cons" style="font-size:12px">
+        <div class="pros"><h4>优点</h4><ul><li>AI 服务可独立扩容</li><li>后续接本地模型/PaddleOCR 更易</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>两套语言维护</li><li>MVP 过度设计</li><li>服务间网络跳</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top:24px;padding:16px;background:var(--bg);border-radius:8px;font-size:13px">
+  <strong>更新后技术栈（方案 B）</strong><br><br>
+  Frontend: Next.js 15 + TypeScript + Ant Design 5<br>
+  Backend: Next.js API Routes + BullMQ Workers<br>
+  Database: PostgreSQL 16 + pgvector<br>
+  Cache/Queue: Redis 7<br>
+  AI 文本/推理: DeepSeek API（可切换）<br>
+  AI 视觉识别: <strong>GLM-5V API</strong>（批改痕迹识别、作业图像理解）<br>
+  ORM: Prisma<br>
+  文件存储: MinIO（本地）/ 阿里云 OSS（云端）可配置<br>
+</div>
