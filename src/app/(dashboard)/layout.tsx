@@ -8,8 +8,10 @@ import {
 } from '@ant-design/icons'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import useSWR from 'swr'
 import { ChatPanel, type ChatMessage } from '@/components/shared/ChatPanel'
+import { fetcher } from '@/lib/fetcher'
 
 const { Sider, Header, Content } = Layout
 
@@ -41,15 +43,22 @@ const QUICK_REPLIES = [
   '推荐本周练习题',
 ]
 
-const INIT_DRAWER_MESSAGES: ChatMessage[] = [
-  { role: 'ai', text: '您好，王老师！有什么我可以帮您的吗？' },
-]
-
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [chatOpen, setChatOpen] = useState(false)
   const [chatMsg, setChatMsg] = useState('')
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>(INIT_DRAWER_MESSAGES)
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+    { role: 'ai', text: '您好！有什么我可以帮您的吗？' },
+  ])
+  const { data: teacher } = useSWR('/api/teacher', fetcher)
+  const teacherName: string = teacher?.name ?? ''
+  const avatarChar = teacherName[0] ?? '?'
+  const greetingSet = useRef(false)
+
+  if (!greetingSet.current && teacherName) {
+    greetingSet.current = true
+    setChatHistory([{ role: 'ai', text: `您好，${teacherName}！有什么我可以帮您的吗？` }])
+  }
 
   const selectedKey = MENU_ITEMS.find((m) => m.key !== '/' && pathname.startsWith(m.key))?.key ?? '/'
   const breadcrumbs = BREADCRUMB_MAP[pathname] ?? ['首页', '详情']
@@ -144,7 +153,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Badge count={3} size="small">
               <BellOutlined style={{ fontSize: 18, color: '#666', cursor: 'pointer' }} />
             </Badge>
-            <Avatar size={32} style={{ background: '#1677ff', cursor: 'pointer', fontSize: 14 }}>王</Avatar>
+            <Avatar size={32} style={{ background: '#1677ff', cursor: 'pointer', fontSize: 14 }}>{avatarChar}</Avatar>
           </div>
         </Header>
 

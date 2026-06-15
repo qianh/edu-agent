@@ -5,10 +5,10 @@ import { z } from 'zod'
 
 const createStudentSchema = z.object({
   name: z.string().min(1),
-  studentNo: z.string().min(1),
-  classId: z.string().cuid(),
-  grade: z.string().min(1),
-  gender: z.string().optional(),
+  studentNo: z.string().min(1).optional(),
+  stage: z.enum(['小学', '初中', '高中']),
+  classNo: z.string().min(1),
+  gender: z.string().min(1),
   tags: z.array(z.string()).optional(),
 })
 
@@ -76,6 +76,19 @@ export async function POST(req: NextRequest) {
     return errorResponse('VALIDATION_ERROR', parsed.error.message, 400)
   }
 
-  const student = await prisma.student.create({ data: parsed.data })
+  const { stage, classNo, ...rest } = parsed.data
+  const className = classNo.endsWith('班') ? classNo : `${classNo}班`
+
+  const teacher = await prisma.teacher.findFirst()
+  if (!teacher) return errorResponse('NOT_FOUND', '暂无教师账户，请先创建教师', 400)
+
+  let cls = await prisma.class.findFirst({ where: { grade: stage, name: className } })
+  if (!cls) {
+    cls = await prisma.class.create({ data: { grade: stage, name: className, subject: '通用', teacherId: teacher.id } })
+  }
+
+  const student = await prisma.student.create({
+    data: { ...rest, grade: stage, classId: cls.id },
+  })
   return Response.json(student, { status: 201 })
 }

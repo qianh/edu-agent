@@ -8,10 +8,10 @@ import {
 } from '@ant-design/icons'
 import Link from 'next/link'
 import useSWR from 'swr'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { ChatPanel, type ChatMessage } from '@/components/shared/ChatPanel'
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+import { fetcher } from '@/lib/fetcher'
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -37,12 +37,6 @@ const STAT_CHIPS = [
   { label: '待确认', key: 'confirm', color: '#faad14', icon: <ClockCircleOutlined /> },
 ]
 
-const INIT_MESSAGES: ChatMessage[] = [
-  { role: 'ai', text: '您好，王老师！今天有2份作业待批改，3名学生需要关注。' },
-  { role: 'ai', text: '张三的代数知识点掌握度本周下降了8%，建议重点辅导。' },
-  { role: 'ai', text: '本周班级平均分为78.6分，较上周提升了2.3分，整体趋势良好。' },
-  { role: 'ai', text: '李华的错题集中在"因式分解"模块，建议针对性出题练习。' },
-]
 
 const STATUS_COLORS: Record<string, string> = {
   confirmed: 'success', pending_confirm: 'warning',
@@ -66,8 +60,10 @@ const QUICK_ENTRIES = [
 
 export default function HomePage() {
   const { data: assignments } = useSWR('/api/assignments', fetcher)
+  const { data: teacher } = useSWR('/api/teacher', fetcher)
+  const { data: riskStudents } = useSWR('/api/students?riskLevel=high&limit=100', fetcher)
   const [input, setInput] = useState('')
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>(INIT_MESSAGES)
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
 
   const greeting = useMemo(getGreeting, [])
   const dateStr = useMemo(() => new Date().toLocaleDateString('zh-CN', {
@@ -88,6 +84,17 @@ export default function HomePage() {
     { weekly: submissions.length, pending: 0, done: 0, confirm: 0 },
   )
 
+  useEffect(() => {
+    const name = teacher?.name ?? ''
+    const pendingCount = chipValues.pending
+    const riskCount = riskStudents?.students?.length ?? 0
+    const greetingName = name ? `您好，${name}！` : '您好！'
+    const detail = pendingCount > 0 || riskCount > 0
+      ? `今天有${pendingCount}份作业待批改，${riskCount}名学生需要关注。`
+      : '今天暂无待处理事项，一切正常。'
+    setChatHistory([{ role: 'ai', text: `${greetingName}${detail}` }])
+  }, [teacher, riskStudents, chipValues.pending])
+
   function sendMsg(text: string) {
     if (!text.trim()) return
     setChatHistory(h => [...h, { role: 'user', text }, { role: 'ai', text: '好的，我来帮您处理...' }])
@@ -105,7 +112,7 @@ export default function HomePage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 2 }}>
-              {greeting}，王老师！ 👋
+              {greeting}{teacher?.name && `，${teacher.name}`}！ 👋
             </div>
             <div style={{ color: '#666', fontSize: 12 }}>{dateStr}</div>
           </div>

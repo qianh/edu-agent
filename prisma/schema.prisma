@@ -31,12 +31,14 @@ model Class {
   students    Student[]
   assignments Assignment[]
   createdAt   DateTime     @default(now())
+
+  @@unique([grade, name])
 }
 
 model Student {
   id          String            @id @default(cuid())
   name        String
-  studentNo   String            @unique
+  studentNo   String?           @unique
   classId     String
   class       Class             @relation(fields: [classId], references: [id])
   grade       String

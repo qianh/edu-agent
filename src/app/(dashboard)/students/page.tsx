@@ -1,6 +1,6 @@
 'use client'
-import { Table, Tag, Button, Input, Tabs, Card, Progress, Avatar, Row, Col } from 'antd'
-import { SearchOutlined } from '@ant-design/icons'
+import { Table, Tag, Button, Input, Tabs, Card, Progress, Avatar, Row, Col, Modal, Form, Select } from 'antd'
+import { SearchOutlined, PlusOutlined } from '@ant-design/icons'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import useSWR from 'swr'
 import { useState } from 'react'
@@ -23,6 +23,19 @@ export default function StudentsPage() {
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState('all')
   const [page, setPage] = useState(1)
+  const [addModalOpen, setAddModalOpen] = useState(false)
+  const [form] = Form.useForm()
+
+  async function handleAddStudent() {
+    try {
+      const values = await form.validateFields()
+      const res = await fetch('/api/students', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values) })
+      if (res.ok) {
+        form.resetFields()
+        setAddModalOpen(false)
+      }
+    } catch {}
+  }
 
   const query = new URLSearchParams({ page: String(page), limit: '20' })
   if (activeTab !== 'all') query.set('riskLevel', activeTab)
@@ -121,7 +134,34 @@ export default function StudentsPage() {
 
   return (
     <div>
-      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>学生管理</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div style={{ fontSize: 18, fontWeight: 700 }}>学生管理</div>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>新增学生</Button>
+      </div>
+
+      <Modal title="新增学生" open={addModalOpen} onOk={handleAddStudent} onCancel={() => { setAddModalOpen(false); form.resetFields() }} okText="确认" cancelText="取消">
+        <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item name="name" label="姓名" rules={[{ required: true, message: '请输入姓名' }]}>
+            <Input placeholder="请输入学生姓名" />
+          </Form.Item>
+          <Form.Item name="studentNo" label="学号">
+            <Input placeholder="请输入学号（选填）" />
+          </Form.Item>
+          <Form.Item label="班级" required>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Form.Item name="stage" rules={[{ required: true, message: '请选择阶段' }]} style={{ flex: 1, marginBottom: 0 }}>
+                <Select placeholder="学校阶段" options={[{ label: '小学', value: '小学' }, { label: '初中', value: '初中' }, { label: '高中', value: '高中' }]} />
+              </Form.Item>
+              <Form.Item name="classNo" rules={[{ required: true, message: '请输入班级' }]} style={{ flex: 1, marginBottom: 0 }}>
+                <Input placeholder="几班（如：1）" suffix="班" />
+              </Form.Item>
+            </div>
+          </Form.Item>
+          <Form.Item name="gender" label="性别" rules={[{ required: true, message: '请选择性别' }]}>
+            <Select placeholder="请选择" options={[{ label: '男', value: '男' }, { label: '女', value: '女' }]} />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {/* Stat Cards + Donut */}
       <Row gutter={10} style={{ marginBottom: 16 }} align="middle">

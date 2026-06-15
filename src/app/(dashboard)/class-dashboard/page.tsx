@@ -1,5 +1,5 @@
 'use client'
-import { Card, Row, Col, Table, Tag, Avatar } from 'antd'
+import { Card, Row, Col, Table, Tag, Avatar, Skeleton } from 'antd'
 import {
   TrophyOutlined, RiseOutlined, CheckCircleOutlined,
   TeamOutlined, FileTextOutlined,
@@ -9,27 +9,26 @@ import {
   Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
 import useSWR from 'swr'
+import { fetcher } from '@/lib/fetcher'
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
-
-const MOCK_TREND = [
-  { week: '4/28', avg: 72, highest: 95, lowest: 45 },
-  { week: '5/5', avg: 75, highest: 96, lowest: 48 },
-  { week: '5/12', avg: 71, highest: 93, lowest: 42 },
-  { week: '5/19', avg: 78, highest: 97, lowest: 55 },
-  { week: '5/26', avg: 80, highest: 98, lowest: 58 },
+const STAT_CARD_META = [
+  { key: 'avg', label: '班级平均分', suffix: '分', icon: <TrophyOutlined />, color: '#1677ff', bg: '#e6f4ff' },
+  { key: 'excellentRate', label: '优秀率', suffix: '%', icon: <RiseOutlined />, color: '#52c41a', bg: '#f6ffed' },
+  { key: 'passRate', label: '合格率', suffix: '%', icon: <CheckCircleOutlined />, color: '#722ed1', bg: '#f9f0ff' },
+  { key: 'weeklySubmit', label: '本周提交', suffix: '份', icon: <FileTextOutlined />, color: '#fa8c16', bg: '#fff7e6' },
+  { key: 'total', label: '学生总数', suffix: '人', icon: <TeamOutlined />, color: '#13c2c2', bg: '#e6fffb' },
 ]
 
-const STAT_CARDS = [
-  { key: 'avg', label: '班级平均分', value: '78.6', suffix: '分', icon: <TrophyOutlined />, color: '#1677ff', bg: '#e6f4ff' },
-  { key: 'excellent', label: '优秀率', value: '92.4', suffix: '%', icon: <RiseOutlined />, color: '#52c41a', bg: '#f6ffed' },
-  { key: 'pass', label: '合格率', value: '63.8', suffix: '%', icon: <CheckCircleOutlined />, color: '#722ed1', bg: '#f9f0ff' },
-  { key: 'submit', label: '本周提交', value: '42', suffix: '份', icon: <FileTextOutlined />, color: '#fa8c16', bg: '#fff7e6' },
-  { key: 'total', label: '学生总数', value: '—', suffix: '人', icon: <TeamOutlined />, color: '#13c2c2', bg: '#e6fffb' },
-]
+type TrendPoint = { week: string; avg: number; highest: number; lowest: number }
+type TrendStats = { avg: number; excellentRate: number; passRate: number; weeklySubmit: number }
 
 export default function ClassDashboardPage() {
+  const { data: trendData, isLoading: trendLoading } = useSWR('/api/class-dashboard/trend', fetcher)
   const { data: students } = useSWR('/api/students?limit=50', fetcher)
+
+  const trend: TrendPoint[] = trendData?.trend ?? []
+  const stats: TrendStats | null = trendData?.stats ?? null
+
   const studentList: Array<{
     id: string
     name: string
@@ -40,13 +39,20 @@ export default function ClassDashboardPage() {
 
   const totalCount = students?.total ?? '—'
 
+  function getStatValue(key: string): string {
+    if (key === 'total') return String(totalCount)
+    if (!stats) return '—'
+    const v = stats[key as keyof TrendStats]
+    return v !== undefined ? String(v) : '—'
+  }
+
   return (
     <div>
       <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>班级学情看板</div>
 
       {/* Stat Cards */}
       <Row gutter={10} style={{ marginBottom: 16 }}>
-        {STAT_CARDS.map((sc) => (
+        {STAT_CARD_META.map((sc) => (
           <Col key={sc.key} style={{ flex: '0 0 20%', maxWidth: '20%' }}>
             <Card
               styles={{ body: { padding: '14px 16px' } }}
@@ -57,7 +63,7 @@ export default function ClassDashboardPage() {
                 <span style={{ fontSize: 11, color: '#666' }}>{sc.label}</span>
               </div>
               <div style={{ fontSize: 26, fontWeight: 700, color: sc.color, lineHeight: 1 }}>
-                {sc.key === 'total' ? String(totalCount) : sc.value}
+                {getStatValue(sc.key)}
                 <span style={{ fontSize: 13, fontWeight: 400 }}>{sc.suffix}</span>
               </div>
             </Card>
@@ -69,18 +75,26 @@ export default function ClassDashboardPage() {
         {/* Left: Trend Chart */}
         <Col span={8}>
           <Card title="班级成绩趋势" style={{ height: 360 }} styles={{ body: { padding: '8px 4px' } }}>
-            <ResponsiveContainer width="100%" height={290}>
-              <LineChart data={MOCK_TREND} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="week" tick={{ fontSize: 11 }} />
-                <YAxis domain={[40, 100]} tick={{ fontSize: 11 }} width={30} />
-                <Tooltip />
-                <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-                <Line type="monotone" dataKey="avg" stroke="#1677ff" strokeWidth={2} dot={{ r: 3 }} name="平均分" />
-                <Line type="monotone" dataKey="highest" stroke="#52c41a" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="最高分" />
-                <Line type="monotone" dataKey="lowest" stroke="#ff4d4f" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="最低分" />
-              </LineChart>
-            </ResponsiveContainer>
+            {trendLoading ? (
+              <Skeleton active style={{ padding: 16 }} />
+            ) : trend.length === 0 ? (
+              <div style={{ height: 290, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bbb', fontSize: 13 }}>
+                暂无批改数据
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={290}>
+                <LineChart data={trend} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="week" tick={{ fontSize: 11 }} />
+                  <YAxis domain={[40, 100]} tick={{ fontSize: 11 }} width={30} />
+                  <Tooltip />
+                  <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+                  <Line type="monotone" dataKey="avg" stroke="#1677ff" strokeWidth={2} dot={{ r: 3 }} name="平均分" />
+                  <Line type="monotone" dataKey="highest" stroke="#52c41a" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="最高分" />
+                  <Line type="monotone" dataKey="lowest" stroke="#ff4d4f" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="最低分" />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </Card>
         </Col>
 

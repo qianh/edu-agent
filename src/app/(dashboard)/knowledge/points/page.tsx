@@ -1,17 +1,18 @@
 'use client'
-import { Card, Table, Tag, Button, Input, Select, Space, Progress, Row, Col, Statistic } from 'antd'
-import { SearchOutlined, BookOutlined, PlusOutlined, FileTextOutlined, CheckCircleOutlined } from '@ant-design/icons'
+import { Card, Table, Tag, Button, Input, Select, Space, Row, Col, Statistic } from 'antd'
+import { SearchOutlined, BookOutlined, PlusOutlined } from '@ant-design/icons'
 import { useState } from 'react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/fetcher'
 
-const MOCK_POINTS = [
-  { id: '1', chapter: '第一章', name: '一元一次方程', subject: '数学', difficulty: 'easy', masteryRate: 85, studentCount: 32, status: 'active' },
-  { id: '2', chapter: '第一章', name: '一元一次不等式', subject: '数学', difficulty: 'medium', masteryRate: 72, studentCount: 32, status: 'active' },
-  { id: '3', chapter: '第二章', name: '二元一次方程组', subject: '数学', difficulty: 'medium', masteryRate: 68, studentCount: 32, status: 'active' },
-  { id: '4', chapter: '第二章', name: '因式分解', subject: '数学', difficulty: 'hard', masteryRate: 54, studentCount: 32, status: 'active' },
-  { id: '5', chapter: '第三章', name: '勾股定理', subject: '数学', difficulty: 'easy', masteryRate: 91, studentCount: 32, status: 'active' },
-  { id: '6', chapter: '第三章', name: '相似三角形', subject: '数学', difficulty: 'hard', masteryRate: 48, studentCount: 32, status: 'active' },
-  { id: '7', chapter: '第四章', name: '圆的基本概念', subject: '数学', difficulty: 'medium', masteryRate: 76, studentCount: 32, status: 'active' },
-]
+type KnowledgePoint = {
+  id: string
+  chapter: string | null
+  name: string
+  subject: string
+  difficulty: string
+  grade: string
+}
 
 const DIFFICULTY_MAP: Record<string, { label: string; color: string }> = {
   easy: { label: '简单', color: 'success' },
@@ -20,7 +21,7 @@ const DIFFICULTY_MAP: Record<string, { label: string; color: string }> = {
 }
 
 const columns = [
-  { title: '章节', dataIndex: 'chapter', key: 'chapter', width: 100 },
+  { title: '章节', dataIndex: 'chapter', key: 'chapter', width: 100, render: (v: string | null) => v ?? '—' },
   { title: '知识点', dataIndex: 'name', key: 'name' },
   { title: '科目', dataIndex: 'subject', key: 'subject', width: 80 },
   {
@@ -28,59 +29,33 @@ const columns = [
     dataIndex: 'difficulty',
     key: 'difficulty',
     width: 80,
-    render: (v: string) => <Tag color={DIFFICULTY_MAP[v]?.color}>{DIFFICULTY_MAP[v]?.label}</Tag>,
+    render: (v: string) => <Tag color={DIFFICULTY_MAP[v]?.color}>{DIFFICULTY_MAP[v]?.label ?? v}</Tag>,
   },
-  {
-    title: '班级掌握率',
-    dataIndex: 'masteryRate',
-    key: 'masteryRate',
-    width: 200,
-    render: (v: number) => (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Progress percent={v} size="small" style={{ flex: 1, margin: 0 }}
-          strokeColor={v >= 80 ? '#52c41a' : v >= 60 ? '#faad14' : '#ff4d4f'} />
-        <span style={{ fontSize: 12, color: '#666', minWidth: 36 }}>{v}%</span>
-      </div>
-    ),
-  },
-  { title: '关联学生', dataIndex: 'studentCount', key: 'studentCount', width: 90,
-    render: (v: number) => <span>{v}人</span> },
 ]
 
 export default function KnowledgePointsPage() {
   const [search, setSearch] = useState('')
-  const filtered = MOCK_POINTS.filter(p =>
-    p.name.includes(search) || p.chapter.includes(search)
+  const { data, isLoading } = useSWR('/api/knowledge/points', fetcher)
+  const points: KnowledgePoint[] = data?.knowledgePoints ?? []
+
+  const filtered = points.filter((p) =>
+    p.name.includes(search) || (p.chapter ?? '').includes(search)
   )
 
-  const avgMastery = Math.round(MOCK_POINTS.reduce((s, p) => s + p.masteryRate, 0) / MOCK_POINTS.length)
-  const weakPoints = MOCK_POINTS.filter(p => p.masteryRate < 60).length
+  const chapters = [...new Set(points.map((p) => p.chapter).filter(Boolean))].length
 
   return (
     <div>
       <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={6}>
+        <Col span={12}>
           <Card>
-            <Statistic title="知识点总数" value={MOCK_POINTS.length}
+            <Statistic title="知识点总数" value={points.length}
               prefix={<BookOutlined style={{ color: '#1677ff' }} />} suffix="个" />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col span={12}>
           <Card>
-            <Statistic title="平均掌握率" value={avgMastery}
-              prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />} suffix="%" />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic title="薄弱知识点" value={weakPoints}
-              prefix={<FileTextOutlined style={{ color: '#ff4d4f' }} />} suffix="个"
-              valueStyle={{ color: weakPoints > 0 ? '#ff4d4f' : '#52c41a' }} />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic title="关联章节" value={[...new Set(MOCK_POINTS.map(p => p.chapter))].length}
+            <Statistic title="关联章节" value={chapters}
               prefix={<BookOutlined style={{ color: '#722ed1' }} />} suffix="章" />
           </Card>
         </Col>
@@ -94,7 +69,7 @@ export default function KnowledgePointsPage() {
               placeholder="搜索知识点..."
               prefix={<SearchOutlined />}
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
               style={{ width: 200 }}
               size="small"
             />
@@ -113,7 +88,9 @@ export default function KnowledgePointsPage() {
           columns={columns}
           rowKey="id"
           size="small"
-          pagination={{ pageSize: 10, showTotal: total => `共 ${total} 条` }}
+          loading={isLoading}
+          locale={{ emptyText: '暂无知识点，点击"添加知识点"开始录入' }}
+          pagination={{ pageSize: 10, showTotal: (total) => `共 ${total} 条` }}
         />
       </Card>
     </div>

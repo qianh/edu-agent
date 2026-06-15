@@ -1,71 +1,73 @@
 'use client'
-import { Card, Form, Input, Select, Switch, Button, Divider, Avatar, Upload, Row, Col, message } from 'antd'
+import { Card, Form, Input, Select, Switch, Button, Divider, Avatar, Upload, Row, Col, message, Skeleton } from 'antd'
 import { UserOutlined, UploadOutlined, BellOutlined, LockOutlined, DatabaseOutlined } from '@ant-design/icons'
 import { useState } from 'react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/fetcher'
+
+type Teacher = { id: string; name: string; subject: string; email: string } | null
+type MonthlyStats = { submissions: number; assignments: number }
 
 export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
+  const { data: teacher, isLoading: teacherLoading } = useSWR<Teacher>('/api/teacher', fetcher)
+  const { data: monthly, isLoading: monthlyLoading } = useSWR<MonthlyStats>('/api/stats/monthly', fetcher)
 
   async function handleSave() {
     setSaving(true)
-    await new Promise(r => setTimeout(r, 800))
+    await new Promise((r) => setTimeout(r, 800))
     setSaving(false)
     message.success('设置已保存')
   }
+
+  const teacherName = teacher?.name ?? ''
+  const avatarChar = teacherName[0] ?? '—'
 
   return (
     <Row gutter={16}>
       <Col span={16}>
         {/* Profile */}
         <Card title={<><UserOutlined style={{ marginRight: 8 }} />个人信息</>} style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-            <Avatar size={64} style={{ background: '#1677ff', fontSize: 24 }}>王</Avatar>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 16 }}>王老师</div>
-              <div style={{ color: '#999', fontSize: 13 }}>数学教师 · 八年级2班</div>
-              <Upload showUploadList={false} style={{ marginTop: 6 }}>
-                <Button size="small" icon={<UploadOutlined />}>更换头像</Button>
-              </Upload>
-            </div>
-          </div>
-          <Form layout="vertical" initialValues={{ name: '王老师', subject: '数学', grade: '八年级', class: '2班', email: 'wang@school.edu.cn' }}>
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item label="姓名" name="name">
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item label="邮箱" name="email">
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col span={8}>
-                <Form.Item label="任教科目" name="subject">
-                  <Select>
-                    <Select.Option value="数学">数学</Select.Option>
-                    <Select.Option value="语文">语文</Select.Option>
-                    <Select.Option value="英语">英语</Select.Option>
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col span={8}>
-                <Form.Item label="年级" name="grade">
-                  <Select>
-                    {['七年级','八年级','九年级'].map(g => <Select.Option key={g} value={g}>{g}</Select.Option>)}
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col span={8}>
-                <Form.Item label="班级" name="class">
-                  <Select>
-                    {['1班','2班','3班','4班'].map(c => <Select.Option key={c} value={c}>{c}</Select.Option>)}
-                  </Select>
-                </Form.Item>
-              </Col>
-            </Row>
-            <Button type="primary" loading={saving} onClick={handleSave}>保存个人信息</Button>
-          </Form>
+          {teacherLoading ? (
+            <Skeleton active avatar paragraph={{ rows: 3 }} />
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+                <Avatar size={64} style={{ background: '#1677ff', fontSize: 24 }}>{avatarChar}</Avatar>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 16 }}>{teacherName || '—'}</div>
+                  <div style={{ color: '#999', fontSize: 13 }}>{teacher?.subject ?? '—'} 教师</div>
+                  <Upload showUploadList={false} style={{ marginTop: 6 }}>
+                    <Button size="small" icon={<UploadOutlined />}>更换头像</Button>
+                  </Upload>
+                </div>
+              </div>
+              <Form layout="vertical" initialValues={{ name: teacherName, email: teacher?.email ?? '', subject: teacher?.subject ?? '' }}>
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item label="姓名" name="name">
+                      <Input />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="邮箱" name="email">
+                      <Input />
+                    </Form.Item>
+                  </Col>
+                  <Col span={8}>
+                    <Form.Item label="任教科目" name="subject">
+                      <Select>
+                        <Select.Option value="数学">数学</Select.Option>
+                        <Select.Option value="语文">语文</Select.Option>
+                        <Select.Option value="英语">英语</Select.Option>
+                      </Select>
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Button type="primary" loading={saving} onClick={handleSave}>保存个人信息</Button>
+              </Form>
+            </>
+          )}
         </Card>
 
         {/* Notifications */}
@@ -119,21 +121,25 @@ export default function SettingsPage() {
       {/* Right: System Info */}
       <Col span={8}>
         <Card title={<><DatabaseOutlined style={{ marginRight: 8 }} />系统信息</>} style={{ marginBottom: 16 }}>
-          {[
-            { label: '系统版本', value: 'v1.0.0' },
-            { label: 'AI 模型', value: 'Claude Sonnet 4.6' },
-            { label: '存储空间', value: '2.3 GB / 10 GB' },
-            { label: '本月批改量', value: '128 份' },
-            { label: '本月出题量', value: '56 题' },
-          ].map((item, i) => (
-            <div key={i}>
-              {i > 0 && <Divider style={{ margin: '10px 0' }} />}
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#666', fontSize: 13 }}>{item.label}</span>
-                <span style={{ fontWeight: 500, fontSize: 13 }}>{item.value}</span>
+          {monthlyLoading ? (
+            <Skeleton active paragraph={{ rows: 4 }} />
+          ) : (
+            [
+              { label: '系统版本', value: 'v1.0.0' },
+              { label: 'AI 模型', value: 'Claude Sonnet 4.6' },
+              { label: '存储空间', value: '—' },
+              { label: '本月批改量', value: `${monthly?.submissions ?? 0} 份` },
+              { label: '本月出题量', value: `${monthly?.assignments ?? 0} 题` },
+            ].map((item, i) => (
+              <div key={i}>
+                {i > 0 && <Divider style={{ margin: '10px 0' }} />}
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#666', fontSize: 13 }}>{item.label}</span>
+                  <span style={{ fontWeight: 500, fontSize: 13 }}>{item.value}</span>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </Card>
 
         <Card title="AI 偏好设置">
