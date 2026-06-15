@@ -42,3 +42,6 @@ uploads/
 
 # prisma
 prisma/*.db
+
+# PAI working memory
+MEMORY/

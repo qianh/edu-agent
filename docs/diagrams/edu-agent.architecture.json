@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "教师教学智能体 · 技术架构",
+    "subtitle": "Next.js 15 + Prisma + BullMQ + 双 AI 提供商（DeepSeek / GLM-5V）",
+    "output": "edu-agent-architecture.html"
+  },
+  "components": [
+    { "id": "teacher", "type": "external", "label": "教师 / 浏览器", "sublabel": "NextAuth 登录态", "pos": [30, 250], "size": [130, 60] },
+
+    { "id": "frontend", "type": "frontend", "label": "前端 UI", "sublabel": "Next.js 15 · Ant Design", "pos": [210, 120], "size": [150, 60] },
+    { "id": "api", "type": "backend", "label": "API Routes", "sublabel": "作业·批改·SSE·题库", "pos": [210, 250], "size": [150, 60] },
+    { "id": "lib", "type": "backend", "label": "核心 lib 层", "sublabel": "AI · Queue · Mastery · Storage", "pos": [210, 380], "size": [150, 60] },
+
+    { "id": "storage", "type": "cloud", "label": "对象存储", "sublabel": "作业图片 (local)", "pos": [470, 120], "size": [150, 56] },
+    { "id": "redis", "type": "database", "label": "Redis", "sublabel": "BullMQ 队列 :6379", "pos": [470, 250], "size": [150, 56] },
+    { "id": "pg", "type": "database", "label": "PostgreSQL", "sublabel": "Prisma · 域模型", "pos": [470, 380], "size": [150, 56] },
+
+    { "id": "worker", "type": "backend", "label": "Worker 进程", "sublabel": "BullMQ worker (tsx)", "tag": "4 个 worker", "pos": [720, 300], "size": [160, 64] },
+
+    { "id": "deepseek", "type": "external", "label": "DeepSeek", "sublabel": "文本批改 LLM", "pos": [700, 120], "size": [140, 52] },
+    { "id": "glm", "type": "external", "label": "GLM-5V", "sublabel": "视觉识别 VLM", "pos": [860, 120], "size": [140, 52] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "应用服务域 · Next.js", "wraps": ["frontend", "api", "lib"] },
+    { "kind": "region", "label": "数据层 · 持久化与队列", "wraps": ["storage", "redis", "pg"] },
+    { "kind": "region", "label": "外部 AI 服务", "wraps": ["deepseek", "glm"] }
+  ],
+  "connections": [
+    { "from": "teacher", "to": "frontend", "label": "HTTPS · SSE", "variant": "emphasis", "fromSide": "right", "toSide": "left" },
+    { "from": "frontend", "to": "api", "fromSide": "bottom", "toSide": "top" },
+    { "from": "api", "to": "lib", "fromSide": "bottom", "toSide": "top" },
+    { "from": "api", "to": "storage", "label": "保存图片", "variant": "dashed", "fromSide": "right", "toSide": "left", "labelDy": -40 },
+    { "from": "api", "to": "redis", "label": "enqueue", "variant": "dashed", "fromSide": "right", "toSide": "left", "labelDy": 24 },
+    { "from": "redis", "to": "worker", "label": "dequeue", "fromSide": "right", "toSide": "left" },
+    { "from": "worker", "to": "storage", "label": "读取图片", "variant": "dashed", "fromSide": "left", "toSide": "right", "labelDy": -40 },
+    { "from": "worker", "to": "pg", "label": "读写结果", "fromSide": "left", "toSide": "right", "labelDy": 26 },
+    { "from": "worker", "to": "deepseek", "label": "文本批改", "variant": "security", "fromSide": "top", "toSide": "bottom", "labelDx": -60 },
+    { "from": "worker", "to": "glm", "label": "视觉识别", "variant": "security", "fromSide": "top", "toSide": "bottom", "labelDx": 40 }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "应用层 · Next.js 15", "items": ["App Router + Ant Design 工作台界面", "API Routes 处理作业/批改/SSE/题库", "核心 lib 抽象 AI · Queue · Mastery · Storage"] },
+    { "dot": "emerald", "title": "数据与异步运行时", "items": ["BullMQ + Redis 驱动 4 个独立 worker", "PostgreSQL 经 Prisma 存全部域模型", "对象存储保存上传的作业图片"] },
+    { "dot": "violet", "title": "AI 服务", "items": ["GLM-5V 视觉识别批阅痕迹与作业图像", "DeepSeek 完成未批阅作业的文本批改", "经 lib/ai/registry 统一抽象可切换"] }
+  ]
+}

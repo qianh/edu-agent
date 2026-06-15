@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "作业智能批改流程",
+    "subtitle": "上传 → 入队 → 视觉识别 + AI 批改 → 复核确认 → 掌握度更新",
+    "output": "edu-agent-grading-flow.html"
+  },
+  "lanes": [
+    { "id": "ui", "label": "教师 · 前端" },
+    { "id": "api", "label": "API · 入队" },
+    { "id": "worker", "label": "队列 Worker" },
+    { "id": "ai", "label": "AI 服务" },
+    { "id": "data", "label": "数据存储" }
+  ],
+  "nodes": [
+    { "id": "upload", "lane": "ui", "col": 0, "type": "frontend", "label": "上传作业", "sublabel": "图片 · UploadWizard" },
+    { "id": "progress", "lane": "ui", "col": 2, "type": "backend", "label": "实时进度", "sublabel": "SSE · useJobStream", "tag": "JobProgressBar" },
+    { "id": "review", "lane": "ui", "col": 3, "type": "security", "label": "复核确认", "sublabel": "grading/confirm", "tag": "审批门" },
+    { "id": "report", "lane": "ui", "col": 5, "type": "frontend", "label": "学情报告", "sublabel": "雷达图 · 热力图" },
+
+    { "id": "ingest", "lane": "api", "col": 1, "type": "backend", "label": "上传入库·入队", "sublabel": "POST /api/upload" },
+
+    { "id": "img", "lane": "worker", "col": 2, "type": "backend", "label": "图像分析", "sublabel": "image-analysis worker" },
+    { "id": "grade", "lane": "worker", "col": 3, "type": "backend", "label": "AI 批改", "sublabel": "grading worker" },
+    { "id": "mastery", "lane": "worker", "col": 5, "type": "backend", "label": "掌握度更新", "sublabel": "mastery-update worker" },
+
+    { "id": "glm", "lane": "ai", "col": 2, "type": "external", "label": "GLM-5V", "sublabel": "视觉识别痕迹" },
+    { "id": "ds", "lane": "ai", "col": 3, "type": "external", "label": "DeepSeek", "sublabel": "文本批改" },
+
+    { "id": "store", "lane": "data", "col": 1, "type": "cloud", "label": "对象存储", "sublabel": "作业图片" },
+    { "id": "pg", "lane": "data", "col": 4, "type": "database", "label": "PostgreSQL", "sublabel": "结果 · 掌握度" }
+  ],
+  "edges": [
+    { "from": "upload", "to": "ingest", "label": "上传", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "from": "ingest", "to": "store", "label": "存图片", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelSegment": 1 },
+    { "from": "ingest", "to": "img", "label": "入队", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelSegment": 1 },
+    { "from": "img", "to": "glm", "label": "视觉识别", "variant": "security", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelSegment": 1 },
+    { "from": "img", "to": "grade", "fromSide": "right", "toSide": "left" },
+    { "from": "grade", "to": "ds", "label": "文本批改", "variant": "security", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelSegment": 1 },
+    { "from": "grade", "to": "review", "label": "待复核", "variant": "emphasis", "fromSide": "top", "toSide": "bottom", "route": "drop", "labelSegment": 1 },
+    { "from": "review", "to": "report", "fromSide": "right", "toSide": "left" },
+    { "from": "review", "to": "pg", "label": "确认存档", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop", "bias": 0.18, "labelAt": [500, 440] },
+    { "from": "grade", "to": "mastery", "label": "更新掌握度", "variant": "dashed", "fromSide": "right", "toSide": "left", "labelDy": -16 },
+    { "from": "mastery", "to": "pg", "variant": "dashed", "fromSide": "bottom", "toSide": "right", "route": "drop" },
+    { "from": "img", "to": "progress", "label": "SSE 进度", "variant": "dashed", "fromSide": "top", "toSide": "bottom", "route": "drop", "labelSegment": 1, "labelDx": 26 }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "前端交互", "items": ["教师上传作业图片（UploadWizard）", "SSE 实时推送任务进度", "复核确认作为审批门，教师掌控终评"] },
+    { "dot": "emerald", "title": "异步流水线", "items": ["API 入库后向 BullMQ 入队", "image-analysis 先行视觉识别", "grading 调 DeepSeek 完成批改"] },
+    { "dot": "amber", "title": "数据沉淀", "items": ["作业图片落对象存储", "批改结果与确认分写入 PostgreSQL", "mastery-update 汇总更新学生掌握度"] }
+  ]
+}
