@@ -128,7 +128,7 @@ export default function StudentsPage() {
         {STAT_CARDS.map((sc) => (
           <Col span={4} key={sc.key}>
             <Card
-              bodyStyle={{ padding: '14px 16px' }}
+              styles={{ body: { padding: '14px 16px' } }}
               style={{ borderRadius: 10, borderLeft: `4px solid ${sc.border}`, background: sc.bg, cursor: 'pointer' }}
               onClick={() => setActiveTab(sc.key === 'total' ? 'all' : sc.key)}
             >
@@ -140,7 +140,7 @@ export default function StudentsPage() {
           </Col>
         ))}
         <Col span={8}>
-          <Card bodyStyle={{ padding: '8px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Card styles={{ body: { padding: '8px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' } }}>
             <ResponsiveContainer width={220} height={100}>
               <PieChart>
                 <Pie data={pieData} cx={60} cy={45} innerRadius={28} outerRadius={44} dataKey="value" paddingAngle={2}>
@@ -155,7 +155,7 @@ export default function StudentsPage() {
       </Row>
 
       {/* Tab + Search */}
-      <Card bodyStyle={{ padding: '0 16px' }} style={{ marginBottom: 12 }}>
+      <Card styles={{ body: { padding: '0 16px' } }} style={{ marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Tabs
             activeKey={activeTab}
@@ -176,7 +176,7 @@ export default function StudentsPage() {
       </Card>
 
       {/* Table */}
-      <Card bodyStyle={{ padding: 0 }}>
+      <Card styles={{ body: { padding: 0 } }}>
         <Table
           dataSource={filtered}
           columns={columns}

@@ -49,7 +49,7 @@ export default function ClassDashboardPage() {
         {STAT_CARDS.map((sc) => (
           <Col key={sc.key} style={{ flex: '0 0 20%', maxWidth: '20%' }}>
             <Card
-              bodyStyle={{ padding: '14px 16px' }}
+              styles={{ body: { padding: '14px 16px' } }}
               style={{ borderRadius: 10, borderTop: `3px solid ${sc.color}`, background: sc.bg }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
@@ -68,7 +68,7 @@ export default function ClassDashboardPage() {
       <Row gutter={12}>
         {/* Left: Trend Chart */}
         <Col span={8}>
-          <Card title="班级成绩趋势" style={{ height: 360 }} bodyStyle={{ padding: '8px 4px' }}>
+          <Card title="班级成绩趋势" style={{ height: 360 }} styles={{ body: { padding: '8px 4px' } }}>
             <ResponsiveContainer width="100%" height={290}>
               <LineChart data={MOCK_TREND} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -89,7 +89,7 @@ export default function ClassDashboardPage() {
           <Card
             title={`学生成绩明细（${studentList.length} 人）`}
             style={{ height: 360 }}
-            bodyStyle={{ padding: 0, height: 308, overflowY: 'auto' }}
+            styles={{ body: { padding: 0, height: 308, overflowY: 'auto' } }}
           >
             <Table
               dataSource={studentList}
@@ -133,7 +133,7 @@ export default function ClassDashboardPage() {
 
         {/* Right: Rankings */}
         <Col span={6}>
-          <Card title="🏆 成绩排名 Top 5" style={{ marginBottom: 10, height: 172 }} bodyStyle={{ padding: '8px 12px' }}>
+          <Card title="🏆 成绩排名 Top 5" style={{ marginBottom: 10, height: 172 }} styles={{ body: { padding: '8px 12px' } }}>
             {studentList
               .filter((s) => s.lastScore !== null)
               .sort((a, b) => (b.lastScore ?? 0) - (a.lastScore ?? 0))
@@ -150,7 +150,7 @@ export default function ClassDashboardPage() {
             )}
           </Card>
 
-          <Card title="⚠️ 需关注学生" style={{ height: 178 }} bodyStyle={{ padding: '8px 12px' }}>
+          <Card title="⚠️ 需关注学生" style={{ height: 178 }} styles={{ body: { padding: '8px 12px' } }}>
             {studentList
               .filter((s) => s.riskLevel === 'high' || s.riskLevel === 'warning')
               .slice(0, 5)

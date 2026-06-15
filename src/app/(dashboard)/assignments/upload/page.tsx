@@ -22,7 +22,7 @@ export default function UploadPage() {
 
       <Row gutter={16}>
         <Col span={16}>
-          <Card bodyStyle={{ padding: '20px 24px' }}>
+          <Card styles={{ body: { padding: '20px 24px' } }}>
             <UploadWizard />
           </Card>
         </Col>
@@ -31,7 +31,7 @@ export default function UploadPage() {
           <Card
             title={<span><QuestionCircleOutlined style={{ marginRight: 6, color: '#1677ff' }} />帮助指引</span>}
             style={{ marginBottom: 12 }}
-            bodyStyle={{ padding: '12px 16px' }}
+            styles={{ body: { padding: '12px 16px' } }}
           >
             {HELP_TIPS.map((tip, i) => (
               <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 12, fontSize: 12, color: '#555', alignItems: 'flex-start' }}>
@@ -41,7 +41,7 @@ export default function UploadPage() {
             ))}
           </Card>
 
-          <Card title="注意事项" bodyStyle={{ padding: '12px 16px' }}>
+          <Card title="注意事项" styles={{ body: { padding: '12px 16px' } }}>
             {[
               '每份作业对应一位学生',
               '批改结果需教师确认后方可入库',

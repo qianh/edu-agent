@@ -65,7 +65,7 @@ export default function GradingPage({ params }: { params: Promise<{ id: string }
         {submission && (
           <Card
             style={{ background: 'linear-gradient(135deg, #f0f9ff 0%, #e6f4ff 100%)', border: '1px solid #bae0ff' }}
-            bodyStyle={{ padding: '12px 16px' }}
+            styles={{ body: { padding: '12px 16px' } }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

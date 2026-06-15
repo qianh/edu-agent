@@ -70,7 +70,7 @@ export default function QuestionGeneratePage() {
       <Row gutter={12}>
         {/* Left: Form Panel */}
         <Col span={7}>
-          <Card title="生成参数设置" bodyStyle={{ padding: '16px' }}>
+          <Card title="生成参数设置" styles={{ body: { padding: '16px' } }}>
             <Form form={form} layout="vertical" onFinish={handleGenerate} size="small">
               <Form.Item name="subject" label="学科" initialValue="数学" rules={[{ required: true }]}>
                 <Select options={['数学', '语文', '英语', '物理', '化学'].map((s) => ({ value: s, label: s }))} />
@@ -123,7 +123,7 @@ export default function QuestionGeneratePage() {
         <Col span={10}>
           <Card
             title={`生成结果（${qData?.total ?? 0} 题，已入库 ${approvedCount} 题）`}
-            bodyStyle={{ padding: 0, maxHeight: 560, overflowY: 'auto' }}
+            styles={{ body: { padding: 0, maxHeight: 560, overflowY: 'auto' } }}
           >
             <Table
               dataSource={qData?.questions ?? []}
@@ -163,7 +163,7 @@ export default function QuestionGeneratePage() {
           <Card
             title={<span><HistoryOutlined style={{ marginRight: 6, color: '#666' }} />生成记录</span>}
             style={{ marginBottom: 10, height: 240 }}
-            bodyStyle={{ padding: '10px 12px', height: 178, overflowY: 'auto' }}
+            styles={{ body: { padding: '10px 12px', height: 178, overflowY: 'auto' } }}
           >
             {(qData?.total ?? 0) === 0 ? (
               <div style={{ color: '#ccc', fontSize: 12, textAlign: 'center', paddingTop: 30 }}>暂无生成记录</div>
@@ -177,7 +177,7 @@ export default function QuestionGeneratePage() {
           </Card>
           <Card
             title={<span><BulbOutlined style={{ color: '#faad14', marginRight: 6 }} />学情建议</span>}
-            bodyStyle={{ padding: '10px 12px', fontSize: 12, color: '#555', lineHeight: 2 }}
+            styles={{ body: { padding: '10px 12px', fontSize: 12, color: '#555', lineHeight: 2 } }}
           >
             <div>• 建议优先出填空题加强基础训练</div>
             <div>• 近期错误率高的知识点建议多出练习题</div>

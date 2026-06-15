@@ -63,7 +63,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
       {/* Profile Header */}
       <Card
         style={{ marginBottom: 16, background: 'linear-gradient(135deg, #f0f9ff 0%, #e6f4ff 100%)', border: '1px solid #bae0ff' }}
-        bodyStyle={{ padding: '16px 20px' }}
+        styles={{ body: { padding: '16px 20px' } }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <Avatar size={56} style={{ background: '#1677ff', fontSize: 24, flexShrink: 0 }}>
@@ -97,7 +97,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           <Card
             title={<span style={{ fontSize: 13 }}>薄弱知识点 <Tag color="red" style={{ fontSize: 11 }}>{weakPoints.length}</Tag></span>}
             style={{ height: 380 }}
-            bodyStyle={{ padding: '8px 12px', height: 320, overflowY: 'auto' }}
+            styles={{ body: { padding: '8px 12px', height: 320, overflowY: 'auto' } }}
           >
             {weakPoints.length === 0 ? (
               <Empty description="暂无薄弱点" image={Empty.PRESENTED_IMAGE_SIMPLE} />
@@ -122,7 +122,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
 
         {/* Center: Heatmap */}
         <Col span={12}>
-          <Card title="知识点掌握热力图" style={{ height: 380 }} bodyStyle={{ padding: 8, height: 320, overflowY: 'auto' }}>
+          <Card title="知识点掌握热力图" style={{ height: 380 }} styles={{ body: { padding: 8, height: 320, overflowY: 'auto' } }}>
             {masteries.length > 0 ? (
               <MasteryHeatmap masteries={masteries} />
             ) : (
@@ -133,7 +133,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
 
         {/* Right: Radar + Suggestions */}
         <Col span={6}>
-          <Card title="能力雷达图" style={{ marginBottom: 8, height: 224 }} bodyStyle={{ padding: 8 }}>
+          <Card title="能力雷达图" style={{ marginBottom: 8, height: 224 }} styles={{ body: { padding: 8 } }}>
             {radarData.length > 0 ? (
               <RadarChart data={radarData} />
             ) : (
@@ -143,7 +143,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           <Card
             title={<span><BulbOutlined style={{ color: '#faad14', marginRight: 6 }} />教师建议</span>}
             style={{ height: 148 }}
-            bodyStyle={{ padding: '10px 12px', fontSize: 12, color: '#555', lineHeight: 1.8 }}
+            styles={{ body: { padding: '10px 12px', fontSize: 12, color: '#555', lineHeight: 1.8 } }}
           >
             {weakPoints.length > 0
               ? `建议重点复习：${weakPoints.slice(0, 2).map((m) => m.knowledgePoint.name).join('、')}等知识点，增加针对性练习。`
@@ -153,7 +153,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
       </Row>
 
       {/* Bottom: Assignment History */}
-      <Card title="作业历史" bodyStyle={{ padding: 0 }}>
+      <Card title="作业历史" styles={{ body: { padding: 0 } }}>
         <Table
           dataSource={submissions}
           rowKey="id"

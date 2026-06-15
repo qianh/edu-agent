@@ -1,14 +1,15 @@
 'use client'
-import { Layout, Menu, Input, Badge, Avatar, Breadcrumb } from 'antd'
+import { Layout, Menu, Breadcrumb, Badge, Avatar, Input, Drawer } from 'antd'
 import {
   HomeOutlined, UserOutlined, FileTextOutlined,
   FormOutlined, BarChartOutlined, BookOutlined,
   SettingOutlined, BellOutlined, SearchOutlined,
-  RobotOutlined, SendOutlined,
+  RobotOutlined, MessageOutlined,
 } from '@ant-design/icons'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useState } from 'react'
+import { ChatPanel, type ChatMessage } from '@/components/shared/ChatPanel'
 
 const { Sider, Header, Content } = Layout
 
@@ -29,14 +30,39 @@ const BREADCRUMB_MAP: Record<string, string[]> = {
   '/assignments/upload': ['首页', '作业管理', '上传作业'],
   '/questions/generate': ['首页', '出题管理', '个性化试题生成'],
   '/class-dashboard': ['首页', '班级看板'],
+  '/knowledge/points': ['首页', '教学资源'],
+  '/settings': ['首页', '系统设置'],
 }
+
+const QUICK_REPLIES = [
+  '本周待批改作业有哪些？',
+  '哪些学生需要重点关注？',
+  '帮我分析班级学情',
+  '推荐本周练习题',
+]
+
+const INIT_DRAWER_MESSAGES: ChatMessage[] = [
+  { role: 'ai', text: '您好，王老师！有什么我可以帮您的吗？' },
+]
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const [aiMsg, setAiMsg] = useState('')
+  const [chatOpen, setChatOpen] = useState(false)
+  const [chatMsg, setChatMsg] = useState('')
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>(INIT_DRAWER_MESSAGES)
 
   const selectedKey = MENU_ITEMS.find((m) => m.key !== '/' && pathname.startsWith(m.key))?.key ?? '/'
   const breadcrumbs = BREADCRUMB_MAP[pathname] ?? ['首页', '详情']
+
+  function sendMessage(text: string) {
+    if (!text.trim()) return
+    setChatHistory(h => [
+      ...h,
+      { role: 'user', text },
+      { role: 'ai', text: '好的，我来帮您分析一下...' },
+    ])
+    setChatMsg('')
+  }
 
   return (
     <Layout style={{ minHeight: '100vh', background: '#f0f2f5' }}>
@@ -45,15 +71,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         style={{
           background: '#fff',
           borderRight: '1px solid #e8e8e8',
-          display: 'flex',
-          flexDirection: 'column',
           position: 'fixed',
           height: '100vh',
           zIndex: 100,
           overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
-        {/* Logo */}
         <div style={{
           padding: '16px 20px',
           display: 'flex',
@@ -75,7 +100,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </span>
         </div>
 
-        {/* Menu */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <Menu
             mode="inline"
@@ -88,47 +112,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             }))}
           />
         </div>
-
-        {/* AI Chat Widget */}
-        <div style={{
-          borderTop: '1px solid #f0f0f0',
-          padding: 12,
-          background: '#fafafa',
-          flexShrink: 0,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <Avatar size={28} style={{ background: '#1677ff', flexShrink: 0 }}>
-              <RobotOutlined style={{ fontSize: 13 }} />
-            </Avatar>
-            <div>
-              <div style={{ fontWeight: 600, color: '#333', fontSize: 12, lineHeight: 1.2 }}>教学助手</div>
-              <div style={{ color: '#999', fontSize: 11 }}>有什么可以帮您？</div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 4 }}>
-            <Input
-              size="small"
-              placeholder="输入问题..."
-              value={aiMsg}
-              onChange={(e) => setAiMsg(e.target.value)}
-              style={{ fontSize: 11, borderRadius: 12 }}
-            />
-            <button
-              style={{
-                background: '#1677ff', border: 'none', borderRadius: 12,
-                width: 28, height: 28, cursor: 'pointer', flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-              onClick={() => setAiMsg('')}
-            >
-              <SendOutlined style={{ color: '#fff', fontSize: 12 }} />
-            </button>
-          </div>
-        </div>
       </Sider>
 
-      <Layout style={{ marginLeft: 200 }}>
-        {/* Header */}
+      <Layout style={{ marginLeft: 200, height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Header style={{
           background: '#fff',
           borderBottom: '1px solid #e8e8e8',
@@ -138,8 +124,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           justifyContent: 'space-between',
           height: 56,
           lineHeight: '56px',
-          position: 'sticky',
-          top: 0,
+          flexShrink: 0,
           zIndex: 99,
         }}>
           <Breadcrumb
@@ -163,11 +148,83 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </Header>
 
-        {/* Page Content */}
-        <Content style={{ padding: '20px 24px', minHeight: 'calc(100vh - 56px)' }}>
+        <Content style={{
+          padding: '20px 24px',
+          flex: 1,
+          minHeight: 0,
+          overflow: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+        }}>
           {children}
         </Content>
       </Layout>
+
+      {/* Floating Chat Button */}
+      <div
+        onClick={() => setChatOpen(true)}
+        style={{
+          position: 'fixed',
+          right: 24,
+          bottom: 32,
+          width: 52,
+          height: 52,
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #1677ff 0%, #4096ff 100%)',
+          boxShadow: '0 4px 16px rgba(22,119,255,0.45)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          zIndex: 200,
+          transition: 'transform 0.2s, box-shadow 0.2s',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'scale(1.08)'
+          e.currentTarget.style.boxShadow = '0 6px 20px rgba(22,119,255,0.55)'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = ''
+          e.currentTarget.style.boxShadow = '0 4px 16px rgba(22,119,255,0.45)'
+        }}
+      >
+        <MessageOutlined style={{ color: '#fff', fontSize: 22 }} />
+      </div>
+
+      <Drawer
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: 8,
+              background: 'linear-gradient(135deg, #1677ff 0%, #4096ff 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <RobotOutlined style={{ color: '#fff', fontSize: 14 }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.2 }}>教学助手</div>
+              <div style={{ fontSize: 11, color: '#52c41a', fontWeight: 400 }}>● 在线</div>
+            </div>
+          </div>
+        }
+        placement="right"
+        width={360}
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        styles={{
+          body: { padding: 0, display: 'flex', flexDirection: 'column', height: '100%' },
+          header: { borderBottom: '1px solid #f0f0f0', padding: '12px 16px' },
+        }}
+      >
+        <ChatPanel
+          messages={chatHistory}
+          quickReplies={QUICK_REPLIES}
+          value={chatMsg}
+          onChange={setChatMsg}
+          onSend={sendMessage}
+          placeholder="输入问题，按 Enter 发送..."
+        />
+      </Drawer>
     </Layout>
   )
 }
