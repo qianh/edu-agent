@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
-    "prisma": "prisma"
+    "prisma": "prisma",
+    "dev:all": "pnpm worker & pnpm dev"
   },
   "dependencies": {
     "@ant-design/icons": "^5.3.7",
