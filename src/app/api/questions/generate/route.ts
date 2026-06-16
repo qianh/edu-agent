@@ -2,18 +2,8 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { questionGenQueue } from '@/lib/queue/queues'
 import { errorResponse } from '@/lib/errors'
-import { z } from 'zod'
 import { requireAuth } from '@/lib/auth'
-
-const genSchema = z.object({
-  studentId: z.string().cuid().optional(),
-  knowledgePointIds: z.array(z.string().cuid()).min(1),
-  type: z.enum(['single', 'fill', 'answer']),
-  difficulty: z.enum(['easy', 'medium', 'hard']),
-  count: z.number().int().min(1).max(20),
-  subject: z.string().min(1),
-  grade: z.string().min(1),
-})
+import { genSchema } from '@/lib/question-gen/schema'
 
 export async function POST(req: NextRequest) {
   const session = await requireAuth()

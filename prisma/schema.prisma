@@ -181,6 +181,9 @@ model Question {
   source           String          @default("ai_generated")
   status           String          @default("draft")
   useCount         Int             @default(0)
+  isChart          Boolean         @default(false)
+  chartSpec        Json?
+  chartImagePrompt String?
   createdAt        DateTime        @default(now())
 }
 

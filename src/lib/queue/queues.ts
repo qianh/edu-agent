@@ -13,12 +13,19 @@ export interface GradingJobData {
   knowledgePointIds: string[]
 }
 
+export interface QuestionTypeCounts {
+  single: number
+  fill: number
+  answer: number
+}
+
 export interface QuestionGenJobData {
-  studentId?: string
-  knowledgePointIds: string[]
-  type: string
+  studentId: string
+  knowledgePointIds?: string[]
+  counts: QuestionTypeCounts
+  chartEnabled: boolean
+  chartPercentage?: number
   difficulty: string
-  count: number
   subject: string
   grade: string
 }
