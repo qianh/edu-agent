@@ -11,6 +11,7 @@ function getClient(): OpenAI {
 
 export const glm5vProvider: NamedAIProvider = {
   name: 'glm5v',
+  model: 'glm-5v-turbo',
 
   async analyzeImage(imageUrl: string, prompt: string, opts?: AIOptions): Promise<ImageAnalysisResult> {
     const client = getClient()

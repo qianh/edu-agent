@@ -11,6 +11,7 @@ function getClient(): OpenAI {
 
 export const deepseekProvider: NamedAIProvider = {
   name: 'deepseek',
+  model: 'deepseek-chat',
 
   async analyzeImage(_imageUrl: string, _prompt: string): Promise<ImageAnalysisResult> {
     throw new Error('DeepSeek does not support image analysis. Use GLM-5V.')

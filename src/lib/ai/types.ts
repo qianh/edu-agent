@@ -37,6 +37,7 @@ export interface AIOptions {
 
 export interface NamedAIProvider {
   name: string
+  model: string
   analyzeImage(imageUrl: string, prompt: string, opts?: AIOptions): Promise<ImageAnalysisResult>
   generateText(prompt: string, opts?: AIOptions): Promise<string>
   generateEmbedding(text: string): Promise<number[]>

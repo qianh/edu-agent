@@ -5,13 +5,42 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/fetcher'
 
-type Teacher = { id: string; name: string; subject: string; email: string } | null
+type Teacher = { id: string; name: string; subject: string; email: string | null; phone: string | null } | null
 type MonthlyStats = { submissions: number; assignments: number }
+type SystemInfo = { version: string; aiModels: { image: string; text: string }; storageBytes: number }
+
+function formatBytes(bytes: number): string {
+  if (bytes <= 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
+  return `${(bytes / 1024 ** i).toFixed(i === 0 ? 0 : 1)} ${units[i]}`
+}
 
 export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
-  const { data: teacher, isLoading: teacherLoading } = useSWR<Teacher>('/api/teacher', fetcher)
+  const [profileForm] = Form.useForm()
+  const { data: teacher, isLoading: teacherLoading, mutate: mutateTeacher } = useSWR<Teacher>('/api/teacher', fetcher)
   const { data: monthly, isLoading: monthlyLoading } = useSWR<MonthlyStats>('/api/stats/monthly', fetcher)
+  const { data: systemInfo, isLoading: systemInfoLoading } = useSWR<SystemInfo>('/api/system/info', fetcher)
+
+  async function handleSaveProfile() {
+    const values = await profileForm.validateFields()
+    setSaving(true)
+    try {
+      const res = await fetch('/api/teacher', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      })
+      if (!res.ok) throw new Error()
+      await mutateTeacher()
+      message.success('设置已保存')
+    } catch {
+      message.error('保存失败，请重试')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   async function handleSave() {
     setSaving(true)
@@ -42,7 +71,7 @@ export default function SettingsPage() {
                   </Upload>
                 </div>
               </div>
-              <Form layout="vertical" initialValues={{ name: teacherName, email: teacher?.email ?? '', subject: teacher?.subject ?? '' }}>
+              <Form form={profileForm} layout="vertical" initialValues={{ name: teacherName, email: teacher?.email ?? '', subject: teacher?.subject ?? '' }}>
                 <Row gutter={16}>
                   <Col span={12}>
                     <Form.Item label="姓名" name="name">
@@ -57,14 +86,20 @@ export default function SettingsPage() {
                   <Col span={8}>
                     <Form.Item label="任教科目" name="subject">
                       <Select>
-                        <Select.Option value="数学">数学</Select.Option>
                         <Select.Option value="语文">语文</Select.Option>
+                        <Select.Option value="数学">数学</Select.Option>
                         <Select.Option value="英语">英语</Select.Option>
+                        <Select.Option value="物理">物理</Select.Option>
+                        <Select.Option value="化学">化学</Select.Option>
+                        <Select.Option value="生物">生物</Select.Option>
+                        <Select.Option value="政治">政治</Select.Option>
+                        <Select.Option value="历史">历史</Select.Option>
+                        <Select.Option value="地理">地理</Select.Option>
                       </Select>
                     </Form.Item>
                   </Col>
                 </Row>
-                <Button type="primary" loading={saving} onClick={handleSave}>保存个人信息</Button>
+                <Button type="primary" loading={saving} onClick={handleSaveProfile}>保存个人信息</Button>
               </Form>
             </>
           )}
@@ -96,6 +131,13 @@ export default function SettingsPage() {
           <Form layout="vertical">
             <Row gutter={16}>
               <Col span={12}>
+                <Form.Item label="账号">
+                  <Input value={teacher?.phone ?? teacher?.email ?? '—'} disabled />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col span={12}>
                 <Form.Item label="当前密码">
                   <Input.Password placeholder="请输入当前密码" />
                 </Form.Item>
@@ -121,13 +163,13 @@ export default function SettingsPage() {
       {/* Right: System Info */}
       <Col span={8}>
         <Card title={<><DatabaseOutlined style={{ marginRight: 8 }} />系统信息</>} style={{ marginBottom: 16 }}>
-          {monthlyLoading ? (
+          {monthlyLoading || systemInfoLoading ? (
             <Skeleton active paragraph={{ rows: 4 }} />
           ) : (
             [
-              { label: '系统版本', value: 'v1.0.0' },
-              { label: 'AI 模型', value: 'Claude Sonnet 4.6' },
-              { label: '存储空间', value: '—' },
+              { label: '系统版本', value: systemInfo?.version ? `v${systemInfo.version}` : '—' },
+              { label: 'AI 模型', value: systemInfo?.aiModels ? `${systemInfo.aiModels.image} / ${systemInfo.aiModels.text}` : '—' },
+              { label: '存储空间', value: systemInfo ? formatBytes(systemInfo.storageBytes) : '—' },
               { label: '本月批改量', value: `${monthly?.submissions ?? 0} 份` },
               { label: '本月出题量', value: `${monthly?.assignments ?? 0} 题` },
             ].map((item, i) => (

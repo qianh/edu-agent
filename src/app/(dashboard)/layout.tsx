@@ -10,7 +10,11 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useState, useRef } from 'react'
 import { useSession, signOut } from 'next-auth/react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/fetcher'
 import { ChatPanel, type ChatMessage } from '@/components/shared/ChatPanel'
+
+type Teacher = { id: string; name: string; subject: string; email: string | null } | null
 
 const { Sider, Header, Content } = Layout
 
@@ -45,12 +49,13 @@ const QUICK_REPLIES = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { data: session } = useSession()
+  const { data: teacher } = useSWR<Teacher>(session ? '/api/teacher' : null, fetcher)
   const [chatOpen, setChatOpen] = useState(false)
   const [chatMsg, setChatMsg] = useState('')
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
     { role: 'ai', text: '您好！有什么我可以帮您的吗？' },
   ])
-  const teacherName: string = session?.user?.name ?? ''
+  const teacherName: string = teacher?.name ?? session?.user?.name ?? ''
   const avatarChar = teacherName[0] ?? '?'
   const greetingSet = useRef(false)
 

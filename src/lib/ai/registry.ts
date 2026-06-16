@@ -28,6 +28,10 @@ class ProviderRegistry {
     if (!providers[name]) throw new Error(`Unknown provider: ${name}`)
     this.textProviderName = name
   }
+
+  getActiveModels(): { image: string; text: string } {
+    return { image: this.getImageProvider().model, text: this.getTextProvider().model }
+  }
 }
 
 export const providerRegistry = new ProviderRegistry()

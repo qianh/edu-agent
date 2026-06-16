@@ -26,6 +26,10 @@ export default function StudentsPage() {
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [form] = Form.useForm()
 
+  const query = new URLSearchParams({ page: String(page), limit: '20' })
+  if (activeTab !== 'all') query.set('riskLevel', activeTab)
+  const { data, isLoading, mutate } = useSWR(`/api/students?${query}`, fetcher)
+
   async function handleAddStudent() {
     try {
       const values = await form.validateFields()
@@ -33,13 +37,10 @@ export default function StudentsPage() {
       if (res.ok) {
         form.resetFields()
         setAddModalOpen(false)
+        mutate()
       }
     } catch {}
   }
-
-  const query = new URLSearchParams({ page: String(page), limit: '20' })
-  if (activeTab !== 'all') query.set('riskLevel', activeTab)
-  const { data, isLoading } = useSWR(`/api/students?${query}`, fetcher)
   const students = data?.students ?? []
 
   const filtered = search
