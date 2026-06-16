@@ -10,8 +10,8 @@ datasource db {
 model Teacher {
   id          String       @id @default(cuid())
   name        String
-  phone       String?
-  email       String       @unique
+  phone       String?      @unique
+  email       String?      @unique
   password    String
   school      String?
   subject     String
@@ -122,26 +122,26 @@ model TeacherMark {
 }
 
 model GradingResult {
-  id                   String          @id @default(cuid())
-  submissionId         String
-  submission           Submission      @relation(fields: [submissionId], references: [id])
-  questionNo           String
-  studentAnswer        String?
-  standardAnswer       String?
-  aiScore              Float?
-  teacherScoreDetected Float?
+  id                    String          @id @default(cuid())
+  submissionId          String
+  submission            Submission      @relation(fields: [submissionId], references: [id])
+  questionNo            String
+  studentAnswer         String?
+  standardAnswer        String?
+  aiScore               Float?
+  teacherScoreDetected  Float?
   teacherScoreConfirmed Float?
-  finalScore           Float?
-  finalSource          String?
-  isCorrect            Boolean?
-  knowledgePointId     String?
-  knowledgePoint       KnowledgePoint? @relation(fields: [knowledgePointId], references: [id])
-  errorType            String?
-  feedback             String?
-  confidence           Float?
-  conflictFlag         Boolean         @default(false)
-  conflictReason       String?
-  createdAt            DateTime        @default(now())
+  finalScore            Float?
+  finalSource           String?
+  isCorrect             Boolean?
+  knowledgePointId      String?
+  knowledgePoint        KnowledgePoint? @relation(fields: [knowledgePointId], references: [id])
+  errorType             String?
+  feedback              String?
+  confidence            Float?
+  conflictFlag          Boolean         @default(false)
+  conflictReason        String?
+  createdAt             DateTime        @default(now())
 }
 
 model StudentMastery {

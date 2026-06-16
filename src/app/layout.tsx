@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { AntdRegistry } from '@ant-design/nextjs-registry'
 import '@ant-design/v5-patch-for-react-19'
 import './globals.css'
+import { SessionProviderWrapper } from '@/components/shared/SessionProviderWrapper'
 
 export const metadata: Metadata = {
   title: '教师教学智能体',
@@ -16,7 +17,9 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <body>
-        <AntdRegistry>{children}</AntdRegistry>
+        <AntdRegistry>
+          <SessionProviderWrapper>{children}</SessionProviderWrapper>
+        </AntdRegistry>
       </body>
     </html>
   )

@@ -1,17 +1,16 @@
 'use client'
-import { Layout, Menu, Breadcrumb, Badge, Avatar, Input, Drawer } from 'antd'
+import { Layout, Menu, Breadcrumb, Badge, Avatar, Input, Drawer, Dropdown } from 'antd'
 import {
   HomeOutlined, UserOutlined, FileTextOutlined,
   FormOutlined, BarChartOutlined, BookOutlined,
   SettingOutlined, BellOutlined, SearchOutlined,
-  RobotOutlined, MessageOutlined,
+  RobotOutlined, MessageOutlined, LogoutOutlined,
 } from '@ant-design/icons'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useState, useRef } from 'react'
-import useSWR from 'swr'
+import { useSession, signOut } from 'next-auth/react'
 import { ChatPanel, type ChatMessage } from '@/components/shared/ChatPanel'
-import { fetcher } from '@/lib/fetcher'
 
 const { Sider, Header, Content } = Layout
 
@@ -45,19 +44,30 @@ const QUICK_REPLIES = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const { data: session } = useSession()
   const [chatOpen, setChatOpen] = useState(false)
   const [chatMsg, setChatMsg] = useState('')
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
     { role: 'ai', text: '您好！有什么我可以帮您的吗？' },
   ])
-  const { data: teacher } = useSWR('/api/teacher', fetcher)
-  const teacherName: string = teacher?.name ?? ''
+  const teacherName: string = session?.user?.name ?? ''
   const avatarChar = teacherName[0] ?? '?'
   const greetingSet = useRef(false)
 
   if (!greetingSet.current && teacherName) {
     greetingSet.current = true
     setChatHistory([{ role: 'ai', text: `您好，${teacherName}！有什么我可以帮您的吗？` }])
+  }
+
+  const avatarMenu = {
+    items: [
+      {
+        key: 'logout',
+        icon: <LogoutOutlined />,
+        label: '退出登录',
+        onClick: () => signOut({ callbackUrl: '/login' }),
+      },
+    ],
   }
 
   const selectedKey = MENU_ITEMS.find((m) => m.key !== '/' && pathname.startsWith(m.key))?.key ?? '/'
@@ -153,7 +163,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Badge count={3} size="small">
               <BellOutlined style={{ fontSize: 18, color: '#666', cursor: 'pointer' }} />
             </Badge>
-            <Avatar size={32} style={{ background: '#1677ff', cursor: 'pointer', fontSize: 14 }}>{avatarChar}</Avatar>
+            <Dropdown menu={avatarMenu} placement="bottomRight">
+              <Avatar size={32} style={{ background: '#1677ff', cursor: 'pointer', fontSize: 14 }}>{avatarChar}</Avatar>
+            </Dropdown>
           </div>
         </Header>
 

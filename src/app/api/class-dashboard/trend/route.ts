@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { requireAuth } from '@/lib/auth'
 
 function getWeekStart(date: Date): string {
   const d = new Date(date)
@@ -9,6 +10,8 @@ function getWeekStart(date: Date): string {
 }
 
 export async function GET() {
+  const session = await requireAuth()
+  if (!session) return Response.json({ error: '未登录' }, { status: 401 })
   const submissions = await prisma.submission.findMany({
     where: { totalScoreConfirmed: { not: null } },
     select: { totalScoreConfirmed: true, createdAt: true },

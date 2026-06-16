@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { errorResponse } from '@/lib/errors'
 import { z } from 'zod'
+import { requireAuth } from '@/lib/auth'
 
 const createStudentSchema = z.object({
   name: z.string().min(1),
@@ -13,6 +14,8 @@ const createStudentSchema = z.object({
 })
 
 export async function GET(req: NextRequest) {
+  const session = await requireAuth()
+  if (!session) return Response.json({ error: '未登录' }, { status: 401 })
   const { searchParams } = req.nextUrl
   const classId = searchParams.get('classId')
   const riskLevel = searchParams.get('riskLevel')
@@ -70,6 +73,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const session = await requireAuth()
+  if (!session?.user?.id) return Response.json({ error: '未登录' }, { status: 401 })
+
   const body = await req.json().catch(() => null)
   const parsed = createStudentSchema.safeParse(body)
   if (!parsed.success) {
@@ -79,8 +85,8 @@ export async function POST(req: NextRequest) {
   const { stage, classNo, ...rest } = parsed.data
   const className = classNo.endsWith('班') ? classNo : `${classNo}班`
 
-  const teacher = await prisma.teacher.findFirst()
-  if (!teacher) return errorResponse('NOT_FOUND', '暂无教师账户，请先创建教师', 400)
+  const teacher = await prisma.teacher.findUnique({ where: { id: session.user.id } })
+  if (!teacher) return errorResponse('NOT_FOUND', '教师账户不存在', 400)
 
   let cls = await prisma.class.findFirst({ where: { grade: stage, name: className } })
   if (!cls) {
@@ -88,7 +94,15 @@ export async function POST(req: NextRequest) {
   }
 
   const student = await prisma.student.create({
-    data: { ...rest, grade: stage, classId: cls.id },
+    data: {
+      name: rest.name,
+      grade: stage,
+      classId: cls.id,
+      gender: rest.gender,
+      tags: rest.tags ?? [],
+      studentNo: rest.studentNo ?? undefined,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any,
   })
   return Response.json(student, { status: 201 })
 }

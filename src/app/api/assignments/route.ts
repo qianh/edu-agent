@@ -1,7 +1,10 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
+import { requireAuth } from '@/lib/auth'
 
 export async function GET(req: NextRequest) {
+  const session = await requireAuth()
+  if (!session) return Response.json({ error: '未登录' }, { status: 401 })
   const { searchParams } = req.nextUrl
   const page = parseInt(searchParams.get('page') ?? '1')
   const limit = parseInt(searchParams.get('limit') ?? '20')

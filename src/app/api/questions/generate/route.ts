@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { questionGenQueue } from '@/lib/queue/queues'
 import { errorResponse } from '@/lib/errors'
 import { z } from 'zod'
+import { requireAuth } from '@/lib/auth'
 
 const genSchema = z.object({
   studentId: z.string().cuid().optional(),
@@ -15,6 +16,8 @@ const genSchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
+  const session = await requireAuth()
+  if (!session) return Response.json({ error: '未登录' }, { status: 401 })
   const body = await req.json().catch(() => null)
   const parsed = genSchema.safeParse(body)
   if (!parsed.success) return errorResponse('VALIDATION_ERROR', parsed.error.message, 400)
@@ -29,6 +32,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  const session = await requireAuth()
+  if (!session) return Response.json({ error: '未登录' }, { status: 401 })
   const { searchParams } = req.nextUrl
   const status = searchParams.get('status') ?? 'draft'
   const page = parseInt(searchParams.get('page') ?? '1')

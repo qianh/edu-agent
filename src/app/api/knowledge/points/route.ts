@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
 import { errorResponse } from '@/lib/errors'
+import { requireAuth } from '@/lib/auth'
 
 const createSchema = z.object({
   name: z.string().min(1),
@@ -13,6 +14,8 @@ const createSchema = z.object({
 })
 
 export async function GET(req: NextRequest) {
+  const session = await requireAuth()
+  if (!session) return Response.json({ error: '未登录' }, { status: 401 })
   const { searchParams } = req.nextUrl
   const subject = searchParams.get('subject')
   const grade = searchParams.get('grade')
@@ -31,6 +34,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const session = await requireAuth()
+  if (!session) return Response.json({ error: '未登录' }, { status: 401 })
   const body = await req.json().catch(() => null)
   const parsed = createSchema.safeParse(body)
   if (!parsed.success) return errorResponse('VALIDATION_ERROR', parsed.error.message, 400)

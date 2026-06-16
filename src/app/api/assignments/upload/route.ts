@@ -4,6 +4,7 @@ import { getStorageProvider } from '@/lib/storage'
 import { imageAnalysisQueue } from '@/lib/queue/queues'
 import { errorResponse } from '@/lib/errors'
 import { z } from 'zod'
+import { requireAuth } from '@/lib/auth'
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024
 
@@ -17,6 +18,8 @@ const uploadSchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
+  const session = await requireAuth()
+  if (!session) return Response.json({ error: '未登录' }, { status: 401 })
   const formData = await req.formData().catch(() => null)
   if (!formData) return errorResponse('VALIDATION_ERROR', 'Invalid form data', 400)
 
