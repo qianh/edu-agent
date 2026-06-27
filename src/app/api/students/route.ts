@@ -88,9 +88,13 @@ export async function POST(req: NextRequest) {
   const teacher = await prisma.teacher.findUnique({ where: { id: session.user.id } })
   if (!teacher) return errorResponse('NOT_FOUND', '教师账户不存在', 400)
 
-  let cls = await prisma.class.findFirst({ where: { grade: stage, name: className } })
+  let cls = await prisma.class.findFirst({
+    where: { grade: stage, name: className, teacherId: teacher.id },
+  })
   if (!cls) {
-    cls = await prisma.class.create({ data: { grade: stage, name: className, subject: '通用', teacherId: teacher.id } })
+    cls = await prisma.class.create({
+      data: { grade: stage, name: className, subject: teacher.subject, teacherId: teacher.id },
+    })
   }
 
   const student = await prisma.student.create({

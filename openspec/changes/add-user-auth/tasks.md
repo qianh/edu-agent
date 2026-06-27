@@ -1,6 +1,6 @@
 ## 1. 依赖安装与环境配置
 
-- [ ] 1.1 安装 `bcryptjs` 和 `@types/bcryptjs`：`pnpm add bcryptjs && pnpm add -D @types/bcryptjs`
+- [ ] 1.1 安装 `bcryptjs`：`pnpm add bcryptjs`（bcryptjs 3.x 自带类型定义，无需 `@types/bcryptjs`）
 - [ ] 1.2 更新 `.env.local`：将 `NEXTAUTH_URL` 改为 `http://localhost:3001`，设置真实 `NEXTAUTH_SECRET`
 
 ## 2. NextAuth 核心配置

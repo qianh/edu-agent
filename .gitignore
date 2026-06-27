@@ -45,3 +45,6 @@ prisma/*.db
 
 # PAI working memory
 MEMORY/
+
+# local agent tooling (machine-specific)
+.claude/tdd-guard/

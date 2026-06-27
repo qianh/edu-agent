@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
 import bcryptjs from 'bcryptjs'
+import { Prisma } from '@prisma/client'
 import { authorize } from '@/lib/auth'
 
 vi.mock('@/lib/db', () => ({
@@ -182,5 +183,61 @@ describe('authorize — 自动注册（新账号）', () => {
       subject: '未设置',
       role: 'teacher',
     })
+  })
+
+  it('recovers from concurrent create race (P2002) by re-fetching and verifying password', async () => {
+    const raceTeacher = {
+      id: 'race-teacher-1',
+      email: null,
+      phone: '13800138001',
+      password: hashedPassword,
+      name: '13800138001',
+      subject: '未设置',
+      role: 'teacher',
+    }
+
+    vi.mocked(prisma.teacher.findUnique)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(raceTeacher as never)
+
+    const p2002 = new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+      code: 'P2002',
+      clientVersion: '5.22.0',
+    })
+    vi.mocked(prisma.teacher.create).mockRejectedValue(p2002)
+
+    const result = await authorize({ emailOrPhone: '13800138001', password: 'secret123' })
+
+    expect(prisma.teacher.findUnique).toHaveBeenCalledTimes(2)
+    expect(result).toEqual({
+      id: 'race-teacher-1',
+      email: null,
+      name: '13800138001',
+      subject: '未设置',
+      role: 'teacher',
+    })
+  })
+
+  it('returns null when P2002 race resolves to account with wrong password', async () => {
+    vi.mocked(prisma.teacher.findUnique)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        id: 'race-teacher-2',
+        email: null,
+        phone: '13800138002',
+        password: hashedPassword,
+        name: '13800138002',
+        subject: '未设置',
+        role: 'teacher',
+      } as never)
+
+    const p2002 = new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+      code: 'P2002',
+      clientVersion: '5.22.0',
+    })
+    vi.mocked(prisma.teacher.create).mockRejectedValue(p2002)
+
+    const result = await authorize({ emailOrPhone: '13800138002', password: 'wrongpassword' })
+    expect(result).toBeNull()
   })
 })

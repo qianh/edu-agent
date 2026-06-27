@@ -32,7 +32,7 @@ model Class {
   assignments Assignment[]
   createdAt   DateTime     @default(now())
 
-  @@unique([grade, name])
+  @@unique([grade, name, teacherId])
 }
 
 model Student {

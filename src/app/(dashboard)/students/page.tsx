@@ -18,6 +18,17 @@ const STAT_CARDS = [
   { key: 'normal', label: '正常', color: '#52c41a', bg: '#f6ffed', border: '#52c41a' },
 ]
 
+const SUMMARY_CARD_STYLE = {
+  borderRadius: 10,
+  minHeight: 128,
+  height: '100%',
+} as const
+
+const SUMMARY_CARD_BODY_STYLE = {
+  padding: '18px 20px',
+  height: '100%',
+} as const
+
 export default function StudentsPage() {
   const router = useRouter()
   const [search, setSearch] = useState('')
@@ -165,12 +176,12 @@ export default function StudentsPage() {
       </Modal>
 
       {/* Stat Cards + Donut */}
-      <Row gutter={10} style={{ marginBottom: 16 }} align="middle">
+      <Row gutter={[10, 10]} style={{ marginBottom: 16 }} align="middle">
         {STAT_CARDS.map((sc) => (
-          <Col span={4} key={sc.key}>
+          <Col xs={24} sm={12} lg={6} xl={4} key={sc.key}>
             <Card
-              styles={{ body: { padding: '14px 16px' } }}
-              style={{ borderRadius: 10, borderLeft: `4px solid ${sc.border}`, background: sc.bg, cursor: 'pointer' }}
+              styles={{ body: SUMMARY_CARD_BODY_STYLE }}
+              style={{ ...SUMMARY_CARD_STYLE, borderLeft: `4px solid ${sc.border}`, background: sc.bg, cursor: 'pointer' }}
               onClick={() => setActiveTab(sc.key === 'total' ? 'all' : sc.key)}
             >
               <div style={{ fontSize: 26, fontWeight: 700, color: sc.color }}>
@@ -180,17 +191,40 @@ export default function StudentsPage() {
             </Card>
           </Col>
         ))}
-        <Col span={8}>
-          <Card styles={{ body: { padding: '8px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' } }}>
-            <ResponsiveContainer width={220} height={100}>
-              <PieChart>
-                <Pie data={pieData} cx={60} cy={45} innerRadius={28} outerRadius={44} dataKey="value" paddingAngle={2}>
-                  {pieData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
-                </Pie>
-                <Tooltip />
-                <Legend layout="vertical" align="right" verticalAlign="middle" iconSize={10} iconType="circle" />
-              </PieChart>
-            </ResponsiveContainer>
+        <Col xs={24} lg={12} xl={8}>
+          <Card
+            styles={{ body: { ...SUMMARY_CARD_BODY_STYLE, display: 'flex', alignItems: 'center', gap: 18 } }}
+            style={{ ...SUMMARY_CARD_STYLE, borderLeft: '4px solid #8c8c8c', background: '#fafafa' }}
+          >
+            <div style={{ minWidth: 86 }}>
+              <div style={{ fontSize: 12, color: '#666' }}>风险分布</div>
+              <div style={{ marginTop: 8, fontSize: 22, fontWeight: 700, color: '#262626' }}>
+                {counts.total}<span style={{ fontSize: 13, color: '#595959' }}>人</span>
+              </div>
+            </div>
+            {counts.total > 0 ? (
+              <ResponsiveContainer width="100%" height={92}>
+                <PieChart>
+                  <Pie data={pieData} cx="32%" cy="50%" innerRadius={26} outerRadius={42} dataKey="value" paddingAngle={2}>
+                    {pieData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                  </Pie>
+                  <Tooltip />
+                  <Legend layout="vertical" align="right" verticalAlign="middle" iconSize={10} iconType="circle" />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, minHeight: 92 }}>
+                <div style={{ width: 84, height: 84, borderRadius: '50%', border: '14px solid #f0f0f0' }} />
+                <div style={{ display: 'grid', gap: 8, fontSize: 13 }}>
+                  {pieData.map((item) => (
+                    <span key={item.name} style={{ display: 'flex', alignItems: 'center', gap: 8, color: item.fill, fontWeight: 600 }}>
+                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: item.fill }} />
+                      {item.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </Card>
         </Col>
       </Row>
